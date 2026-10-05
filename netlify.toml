@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Proxy API requests to InfinityFree
+[[redirects]]
+  from = "/api/*"
+  to = "http://smartpossaaaa.kesug.com/smart-pos-api/:splat"
+  status = 200
+  force = true
+
+# Handle SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,673 @@
+/* ============================================
+   📁 File: src/assets/css/liquid-glass.css
+   🌊 Liquid Glass Theme — Light (visionOS) + Dark (Neon)
+   ============================================ */
+
+/* ============================================
+   GLOBAL GLASS VARIABLES
+   ============================================ */
+
+   
+:root {
+  --glass-blur: 20px;
+  --glass-saturate: 180%;
+  --glass-radius: 18px;
+
+  /* Light (visionOS frosted) */
+  --glass-bg-light: rgba(255, 255, 255, 0.65);
+  --glass-bg-light-strong: rgba(255, 255, 255, 0.8);
+  --glass-border-light: rgba(255, 255, 255, 0.7);
+  --glass-border-light-soft: rgba(255, 255, 255, 0.4);
+  --glass-shadow-light: 0 8px 32px rgba(31, 38, 135, 0.08);
+  --glass-shadow-light-hover: 0 12px 40px rgba(31, 38, 135, 0.12);
+
+  /* Dark (neon purple) */
+  --glass-bg-dark: rgba(26, 22, 48, 0.55);
+  --glass-bg-dark-strong: rgba(26, 22, 48, 0.75);
+  --glass-border-dark: rgba(167, 139, 250, 0.18);
+  --glass-border-dark-soft: rgba(255, 255, 255, 0.08);
+  --glass-glow-purple: 0 0 60px rgba(124, 58, 237, 0.35);
+  --glass-shadow-dark: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ============================================
+   BODY BACKGROUND — Decorative gradients behind glass
+   ============================================ */
+html, body {
+  background-attachment: fixed !important;
+}
+
+body:not(.dark-mode) {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(168, 85, 247, 0.10), transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.06), transparent 60%),
+    linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%) !important;
+}
+
+body.dark-mode {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(124, 58, 237, 0.22), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(79, 70, 229, 0.18), transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(167, 139, 250, 0.08), transparent 60%),
+    linear-gradient(135deg, #0a0a1a 0%, #1a1330 100%) !important;
+}
+
+/* ============================================
+   REUSABLE GLASS PANEL UTILITY
+   ============================================ */
+.glass-panel,
+.glass-card,
+.glass-navbar,
+.glass-sidebar,
+.glass-modal,
+.glass-dropdown {
+  background: var(--glass-bg-light);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border-light);
+  box-shadow: var(--glass-shadow-light);
+}
+
+body.dark-mode .glass-panel,
+body.dark-mode .glass-card,
+body.dark-mode .glass-navbar,
+body.dark-mode .glass-sidebar,
+body.dark-mode .glass-modal,
+body.dark-mode .glass-dropdown {
+  background: var(--glass-bg-dark);
+  border-color: var(--glass-border-dark);
+  box-shadow: var(--glass-shadow-dark), var(--glass-glow-purple);
+}
+
+/* ============================================
+   NAVBAR — Liquid glass
+   ============================================ */
+.navbar {
+  background: rgba(255, 255, 255, 0.72) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 4px 24px rgba(31, 38, 135, 0.06);
+}
+
+body.dark-mode .navbar {
+  background: rgba(17, 14, 40, 0.6) !important;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.15) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(124, 58, 237, 0.12);
+}
+
+/* ============================================
+   SIDEBAR — Liquid glass
+   ============================================ */
+.sidebar {
+  background: rgba(255, 255, 255, 0.72) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 4px 0 24px rgba(31, 38, 135, 0.06) !important;
+}
+
+body.dark-mode .sidebar {
+  background: rgba(17, 14, 40, 0.6) !important;
+  border-right: 1px solid rgba(167, 139, 250, 0.15) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(124, 58, 237, 0.10) !important;
+}
+
+/* ============================================
+   PAGE CONTENT — Transparent to show body gradient
+   ============================================ */
+.page-content {
+  background: transparent !important;
+}
+
+/* ============================================
+   CARDS — Liquid glass
+   ============================================ */
+.card,
+.product-card,
+.stat-card,
+.dashboard-card {
+  background: var(--glass-bg-light) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border-light) !important;
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow-light) !important;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.25s ease,
+              background 0.25s ease;
+}
+
+.card:hover,
+.product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--glass-shadow-light-hover) !important;
+  background: var(--glass-bg-light-strong) !important;
+}
+
+body.dark-mode .card,
+body.dark-mode .product-card,
+body.dark-mode .stat-card,
+body.dark-mode .dashboard-card {
+  background: var(--glass-bg-dark) !important;
+  border-color: var(--glass-border-dark) !important;
+  box-shadow: var(--glass-shadow-dark), 0 0 40px rgba(124, 58, 237, 0.10) !important;
+}
+
+body.dark-mode .card:hover,
+body.dark-mode .product-card:hover {
+  background: var(--glass-bg-dark-strong) !important;
+  box-shadow: var(--glass-shadow-dark), 0 0 60px rgba(124, 58, 237, 0.25) !important;
+}
+
+/* ============================================
+   MODALS — Stronger glass
+   ============================================ */
+.modal-content {
+  background: rgba(255, 255, 255, 0.85) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 24px 64px rgba(31, 38, 135, 0.18) !important;
+}
+
+body.dark-mode .modal-content {
+  background: rgba(20, 16, 46, 0.85) !important;
+  border: 1px solid rgba(167, 139, 250, 0.22) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 60px rgba(124, 58, 237, 0.25) !important;
+}
+
+.modal-overlay {
+  background: rgba(15, 15, 30, 0.35) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+body.dark-mode .modal-overlay {
+  background: rgba(0, 0, 0, 0.55) !important;
+}
+
+/* ============================================
+   TABLES — Glass wrapper
+   ============================================ */
+.attendance-table-wrapper,
+.table-responsive {
+  background: var(--glass-bg-light) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border-light) !important;
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow-light) !important;
+}
+
+body.dark-mode .attendance-table-wrapper,
+body.dark-mode .table-responsive {
+  background: var(--glass-bg-dark) !important;
+  border-color: var(--glass-border-dark) !important;
+  box-shadow: var(--glass-shadow-dark) !important;
+}
+
+/* Table rows subtle transparency */
+.table tbody tr,
+.attendance-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+body:not(.dark-mode) .table tbody tr:hover,
+body:not(.dark-mode) .attendance-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+body.dark-mode .table tbody tr:hover,
+body.dark-mode .attendance-table tbody tr:hover {
+  background: rgba(124, 58, 237, 0.08) !important;
+}
+
+/* ============================================
+   BUTTONS — Glass friendly
+   ============================================ */
+.btn-primary,
+.btn-gradient {
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3) !important;
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-gradient:hover:not(:disabled) {
+  box-shadow: 0 8px 28px rgba(79, 70, 229, 0.45) !important;
+}
+
+body.dark-mode .btn-primary,
+body.dark-mode .btn-gradient {
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.45) !important;
+}
+
+body.dark-mode .btn-primary:hover:not(:disabled),
+body.dark-mode .btn-gradient:hover:not(:disabled) {
+  box-shadow: 0 8px 32px rgba(124, 58, 237, 0.6) !important;
+}
+
+/* Secondary glass buttons */
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.6) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+}
+
+body.dark-mode .btn-secondary {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(167, 139, 250, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+
+/* ============================================
+   FORM CONTROLS — Frosted inputs
+   ============================================ */
+.form-control {
+  background: rgba(255, 255, 255, 0.65) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(79, 70, 229, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12) !important;
+}
+
+body.dark-mode .form-control {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(167, 139, 250, 0.18) !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .form-control:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(167, 139, 250, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2) !important;
+}
+
+/* ============================================
+   SCROLLBAR — Glass tinted
+   ============================================ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body:not(.dark-mode) ::-webkit-scrollbar-thumb {
+  background: rgba(79, 70, 229, 0.25);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+body:not(.dark-mode) ::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 70, 229, 0.45);
+  background-clip: padding-box;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background: rgba(167, 139, 250, 0.35);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(167, 139, 250, 0.6);
+  background-clip: padding-box;
+}
+
+/* ============================================
+   BADGES — Frosted pills
+   ============================================ */
+.badge {
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* ============================================
+   LOGIN PAGE — Enhanced glass
+   ============================================ */
+.login-card {
+  background: rgba(255, 255, 255, 0.75) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 24px 64px rgba(31, 38, 135, 0.2) !important;
+}
+
+body.dark-mode .login-card {
+  background: rgba(20, 16, 46, 0.75) !important;
+  border: 1px solid rgba(167, 139, 250, 0.22) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 80px rgba(124, 58, 237, 0.25) !important;
+}
+
+/* ============================================
+   SMOOTH TRANSITION WHEN TOGGLING THEME
+   ============================================ */
+body,
+.navbar,
+.sidebar,
+.card,
+.modal-content,
+.form-control,
+.btn-secondary,
+.glass-panel {
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    color 0.25s ease;
+}
+
+/* ============================================
+   FALLBACK — If browser doesn't support backdrop-filter
+   ============================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel,
+  .card,
+  .navbar,
+  .sidebar,
+  .modal-content {
+    background: rgba(255, 255, 255, 0.95) !important;
+  }
+  body.dark-mode .glass-panel,
+  body.dark-mode .card,
+  body.dark-mode .navbar,
+  body.dark-mode .sidebar,
+  body.dark-mode .modal-content {
+    background: rgba(26, 22, 48, 0.95) !important;
+  }
+}
+
+/* ============================================================
+   🌊 PHASE 5 — UNIVERSAL GLASS INJECTION
+   Auto-applies liquid glass to every page.
+   Overrides hardcoded white/#1e293b backgrounds app-wide.
+   ============================================================ */
+
+/* ============================================================
+   1. PAGE CONTENT — always transparent so body gradient shows
+   ============================================================ */
+.page-content,
+.main-content,
+.app-layout {
+  background: transparent !important;
+}
+
+/* ============================================================
+   2. UNIVERSAL CARD-LIKE PANELS
+   Any div with a white or dark slate background gets glass treatment.
+   ============================================================ */
+
+/* Light-mode glass panels */
+[class*="card"],
+[class*="panel"],
+[class*="box"],
+[class*="section"]:not(.sidebar):not(.navbar),
+[class*="wrapper"]:not(.table-wrapper):not(.attendance-table-wrapper),
+[class*="container"]:not(.attendance-container):not(.payroll-container):not(.container-full) {
+  /* Only apply if no explicit glass class already */
+}
+
+/* ============================================================
+   3. HARD-CODED WHITE BACKGROUNDS → GLASS (light mode)
+   Uses attribute substring matching to catch all variations.
+   ============================================================ */
+body:not(.dark-mode) .stats,
+body:not(.dark-mode) .stats-row,
+body:not(.dark-mode) .stats-cards,
+body:not(.dark-mode) .stat-card,
+body:not(.dark-mode) .stat-item,
+body:not(.dark-mode) .filters,
+body:not(.dark-mode) .filters-section,
+body:not(.dark-mode) .list,
+body:not(.dark-mode) .list-header,
+body:not(.dark-mode) .employees-list,
+body:not(.dark-mode) .table-wrapper,
+body:not(.dark-mode) .attendance-table-wrapper,
+body:not(.dark-mode) .selected-summary,
+body:not(.dark-mode) .login-card,
+body:not(.dark-mode) .product-card,
+body:not(.dark-mode) .cart-container,
+body:not(.dark-mode) .cart-header,
+body:not(.dark-mode) .cart-body,
+body:not(.dark-mode) .cart-footer,
+body:not(.dark-mode) .dashboard-card,
+body:not(.dark-mode) .summary-card,
+body:not(.dark-mode) .pagination,
+body:not(.dark-mode) .page-header,
+body:not(.dark-mode) .settings-tabs,
+body:not(.dark-mode) .backup-section {
+  background: rgba(255, 255, 255, 0.6) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 8px 24px rgba(31, 38, 135, 0.06) !important;
+}
+
+/* Dark-mode glass panels */
+body.dark-mode .stats,
+body.dark-mode .stats-row,
+body.dark-mode .stats-cards,
+body.dark-mode .stat-card,
+body.dark-mode .stat-item,
+body.dark-mode .filters,
+body.dark-mode .filters-section,
+body.dark-mode .list,
+body.dark-mode .list-header,
+body.dark-mode .employees-list,
+body.dark-mode .table-wrapper,
+body.dark-mode .attendance-table-wrapper,
+body.dark-mode .selected-summary,
+body.dark-mode .login-card,
+body.dark-mode .product-card,
+body.dark-mode .cart-container,
+body.dark-mode .cart-header,
+body.dark-mode .cart-body,
+body.dark-mode .cart-footer,
+body.dark-mode .dashboard-card,
+body.dark-mode .summary-card,
+body.dark-mode .pagination,
+body.dark-mode .page-header,
+body.dark-mode .settings-tabs,
+body.dark-mode .backup-section {
+  background: rgba(26, 22, 48, 0.55) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(167, 139, 250, 0.18) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(124, 58, 237, 0.08) !important;
+}
+
+/* ============================================================
+   4. HARD-CODED SOLID BACKGROUNDS → TRANSPARENT
+   For elements that should fully inherit the body gradient.
+   ============================================================ */
+.page-content,
+.main-content,
+.app-layout,
+.payroll-container,
+.attendance-container,
+.dashboard-container,
+.container,
+.container-fluid {
+  background: transparent !important;
+}
+
+/* ============================================================
+   5. TABLES — transparent rows, glass hover
+   ============================================================ */
+.table,
+.data-table,
+.attendance-table,
+.payroll-table,
+table {
+  background: transparent !important;
+}
+
+table thead,
+table thead tr,
+table thead th {
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+body.dark-mode table thead,
+body.dark-mode table thead tr,
+body.dark-mode table thead th {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.1) !important;
+}
+
+table tbody tr,
+table tbody td {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+body.dark-mode table tbody tr,
+body.dark-mode table tbody td {
+  border-bottom: 1px solid rgba(167, 139, 250, 0.06) !important;
+}
+
+table tbody tr:hover,
+table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+body.dark-mode table tbody tr:hover,
+body.dark-mode table tbody tr:hover td {
+  background: rgba(124, 58, 237, 0.1) !important;
+}
+
+/* ============================================================
+   6. INPUTS & FORM CONTROLS — glass base
+   ============================================================ */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select {
+  background: rgba(255, 255, 255, 0.6) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  transition: all 0.2s ease !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(79, 70, 229, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12) !important;
+}
+
+body.dark-mode input[type="text"],
+body.dark-mode input[type="email"],
+body.dark-mode input[type="password"],
+body.dark-mode input[type="number"],
+body.dark-mode input[type="search"],
+body.dark-mode input[type="tel"],
+body.dark-mode input[type="url"],
+body.dark-mode textarea,
+body.dark-mode select {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(167, 139, 250, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode input:focus,
+body.dark-mode textarea:focus,
+body.dark-mode select:focus {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(167, 139, 250, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2) !important;
+}
+
+/* ============================================================
+   7. PAGINATION & FILTER DROPDOWNS
+   ============================================================ */
+.pagination,
+.page-size-select,
+.pagination-controls,
+.pagination-info {
+  background: transparent !important;
+}
+
+/* ============================================================
+   8. BADGES — frosted
+   ============================================================ */
+.badge,
+.status-badge,
+.status-present,
+.status-late,
+.status-absent,
+.status-pending,
+.status-approved,
+.status-paid,
+.badge-new,
+.badge-type,
+.badge-primary,
+.badge-success,
+.badge-warning,
+.badge-danger,
+.badge-info,
+.salary-type {
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* ============================================================
+   9. MODALS — glass
+   ============================================================ */
+.modal-content,
+.modal-body {
+  background: rgba(255, 255, 255, 0.85) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+}
+
+body.dark-mode .modal-content,
+body.dark-mode .modal-body {
+  background: rgba(20, 16, 46, 0.85) !important;
+}
+
+/* ============================================================
+   10. SAFETY NETS — don't touch these
+   ============================================================ */
+.sidebar,
+.navbar,
+.glass-panel,
+.glass-card,
+.glass-navbar,
+.glass-sidebar,
+.glass-modal,
+.glass-dropdown {
+  /* Already handled by core liquid-glass.css — leave alone */
+}
+
+/* Don't override SVG icons or images */
+img, svg {
+  background: transparent !important;
+}
+
+/* Keep stat-icon colored backgrounds intact (they're inline styled) */
+.stat-icon {
+  /* preserve inline styles */
+}
