@@ -109,7 +109,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '../api/index.js'
+import api from '@/api/index.js'
 
 const router = useRouter()
 const loading = ref(false)

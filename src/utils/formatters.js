@@ -1,5 +1,5 @@
 // src/utils/formatters.js
-import { config } from '../config'
+import { config } from '@/config'
 
 export const formatCurrency = (amount) => {
   return config.currencySymbol + Number(amount).toFixed(2)

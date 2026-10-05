@@ -152,7 +152,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import api from '../api/index.js' // ✅ FIXED: Changed from '../api/index.js/index.js' to '../api/index.js'
+import api from '@/api/index.js'
 
 const router = useRouter()
 const route = useRoute()

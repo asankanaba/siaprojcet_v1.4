@@ -224,7 +224,7 @@ import { ref, onMounted, computed } from 'vue'
 import Sidebar from '@/components/common/Sidebar.vue'
 import Navbar from '@/components/common/Navbar.vue'
 import AlertModal from '@/components/common/AlertModal.vue'
-import api from '../../api/index.js'
+import api from '@/api/index.js'
 
 const staffList = ref([])
 const search = ref('')
