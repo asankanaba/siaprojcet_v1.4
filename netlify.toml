@@ -1,16 +1,55 @@
+# ============================================================
+# 📁 File: netlify.toml
+# 🚀 Netlify deployment config for Smart POS frontend
+# ============================================================
+
 [build]
-  command = "npm run build"
+  # Vite outputs to /dist by default
   publish = "dist"
+  command = "npm run build"
 
-# Proxy API requests to InfinityFree
-[[redirects]]
-  from = "/api/*"
-  to = "http://smartpossaaaa.kesug.com/smart-pos-api/:splat"
-  status = 200
-  force = true
-
-# Handle SPA routing
+# ============================================================
+# SPA FALLBACK
+# Ensures direct visits / refreshes to routes like
+#   /careers/senior-backend-engineer-53
+#   /payments/return?status=success&ref=...
+# serve index.html instead of 404ing on Netlify.
+# Vue Router then handles the route client-side.
+# ============================================================
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# ============================================================
+# NOTE: No /api/* proxy here.
+# The frontend calls the backend directly via VITE_API_BASE_URL
+# (see .env.production), which points to
+#   https://smartpossiaaaa.kesug.com/smart-pos-api/api
+# The backend already sends Access-Control-Allow-Origin: *,
+# so a proxy is unnecessary and can break auth headers.
+# ============================================================
+
+# ============================================================
+# SECURITY HEADERS
+# ============================================================
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# ============================================================
+# CACHE STATIC ASSETS
+# ============================================================
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ============================================================
+# BUILD ENV
+# ============================================================
+[build.environment]
+  NODE_VERSION = "20"
