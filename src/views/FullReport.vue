@@ -334,9 +334,9 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { Chart, registerables } from 'chart.js'
-import Sidebar from '../components/common/Sidebar.vue'
-import Navbar from '../components/common/Navbar.vue'
-import api from '../api/index.js'
+import Sidebar from '@/components/common/Sidebar.vue'
+import Navbar from '@/components/common/Navbar.vue'
+import api from '@/api/index.js'
 
 Chart.register(...registerables)
 

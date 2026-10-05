@@ -98,10 +98,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import Sidebar from '../components/common/Sidebar.vue'
-import Navbar from '../components/common/Navbar.vue'
-import { showSuccess, showError, showLoading, closeLoading } from '../utils/security'
-import api from '../api'
+import Sidebar from '@/components/common/Sidebar.vue'
+import Navbar from '@/components/common/Navbar.vue'
+import { showSuccess, showError, showLoading, closeLoading } from '@/utils/security'
+import api from '@/api'
 
 const router = useRouter()
 const route = useRoute()

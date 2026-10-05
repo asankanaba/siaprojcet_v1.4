@@ -67,9 +67,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import Sidebar from '../components/common/Sidebar.vue'
-import Navbar from '../components/common/Navbar.vue'
-import api from '../api/index.js'
+import Sidebar from '@/components/common/Sidebar.vue'
+import Navbar from '@/components/common/Navbar.vue'
+import api from '@/api/index.js'
 
 const sales = ref([])
 const search = ref('')
