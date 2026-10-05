@@ -7,15 +7,32 @@ import axios from 'axios';
 // ============================================
 // API CONFIGURATION
 // ============================================
-// Local:  http://localhost/smart-pos-api/api
-// Prod:   https://smartpossiaaaa.kesug.com/smart-pos-api/api
-// Both are controlled via .env (VITE_API_BASE_URL, VITE_API_BASE_URL2)
+// Precedence:
+//   1. VITE_API_BASE_URL (from .env or Netlify env vars) — always wins
+//   2. Local dev fallback   → http://localhost/smart-pos-api/api
+//   3. Production fallback  → https://smartpossiaaaa.kesug.com/smart-pos-api/api
+//
+// We NEVER use a relative path like /api — Netlify does not proxy /api/*.
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost/smart-pos-api/api')
-  .replace(/\/$/, '');
+const LOCAL_FALLBACK    = 'http://localhost/smart-pos-api/api';
+const PRODUCTION_FALLBACK = 'https://smartpossiaaaa.kesug.com/smart-pos-api/api';
 
-const API_BASE_URL2 = (import.meta.env.VITE_API_BASE_URL2 || 'https://smartpossiaaaa.kesug.com/smart-pos-api/api')
-  .replace(/\/$/, '');
+function resolveBase(envVar, prodDefault = PRODUCTION_FALLBACK) {
+  // 1. Env var wins
+  const fromEnv = import.meta.env[envVar];
+  if (fromEnv && typeof fromEnv === 'string' && fromEnv.length > 0) {
+    return fromEnv.replace(/\/$/, '');
+  }
+  // 2. Local dev fallback
+  if (import.meta.env.DEV) {
+    return LOCAL_FALLBACK.replace(/\/$/, '');
+  }
+  // 3. Production fallback
+  return prodDefault.replace(/\/$/, '');
+}
+
+const API_BASE_URL  = resolveBase('VITE_API_BASE_URL',  PRODUCTION_FALLBACK);
+const API_BASE_URL2 = resolveBase('VITE_API_BASE_URL2', PRODUCTION_FALLBACK);
 
 const COMMON_HEADERS = {
   'Content-Type': 'application/json',
@@ -23,14 +40,23 @@ const COMMON_HEADERS = {
   'X-Requested-With': 'XMLHttpRequest'
 };
 
-// Primary instance (local / currently active base)
+console.log('🔌 API Base URL :', API_BASE_URL);
+console.log('🔌 API Base URL2:', API_BASE_URL2);
+
+// Safety check — refuse to ship a localhost URL to production
+if (!import.meta.env.DEV && API_BASE_URL.includes('localhost')) {
+  console.error(
+    '🚨 Production build is using localhost as the API base URL. ' +
+    'Set VITE_API_BASE_URL in Netlify → Site configuration → Environment variables.'
+  );
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: COMMON_HEADERS,
   timeout: 30000
 });
 
-// Secondary instance (deployed backend)
 const api2 = axios.create({
   baseURL: API_BASE_URL2,
   headers: COMMON_HEADERS,
@@ -47,14 +73,17 @@ const attachToken = (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Only log in local dev, NOT when running via `npm run dev` on your own machine
-// AND not when VITE_API_BASE_URL is a remote URL
-const isLocalDev = import.meta.env.DEV && 
-  (config.baseURL?.includes('localhost') || config.baseURL?.includes('127.0.0.1'));
+  const isLocalDev =
+    import.meta.env.DEV &&
+    (config.baseURL?.includes('localhost') ||
+      config.baseURL?.includes('127.0.0.1'));
 
-if (isLocalDev && import.meta.env.VITE_VERBOSE_API === 'true') {
-  console.log(`📤 ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data || '');
-}
+  if (isLocalDev && import.meta.env.VITE_VERBOSE_API === 'true') {
+    console.log(
+      `📤 ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
+      config.data || ''
+    );
+  }
   return config;
 };
 
