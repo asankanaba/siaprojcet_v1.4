@@ -370,10 +370,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
-import Sidebar from '../components/common/Sidebar.vue';
-import Navbar from '../components/common/Navbar.vue';
-import api from '@/api//index.js';
+import { useAuthStore } from '@/stores/auth';
+import Sidebar from '@/components/common/Sidebar.vue';
+import Navbar from '@/components/common/Navbar.vue';
+import api from '@/api/index.js';
 import Swal from 'sweetalert2';
 import { config } from '@/config.js'
 

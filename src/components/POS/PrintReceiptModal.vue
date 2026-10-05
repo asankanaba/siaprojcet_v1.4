@@ -165,9 +165,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useCartStore } from '../../stores/cart'
-import { useAuthStore } from '../../stores/auth'
-import api from '../../api/index.js'
+import { useCartStore } from '@/stores/cart'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/api/index.js'
 import PrintReceiptModal from './PrintReceiptModal.vue'
 
 const cartStore = useCartStore()

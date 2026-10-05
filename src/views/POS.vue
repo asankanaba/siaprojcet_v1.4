@@ -321,12 +321,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { useCartStore } from '../stores/cart'
-import Sidebar from '../components/common/Sidebar.vue'
-import Navbar from '../components/common/Navbar.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import Sidebar from '@/components/common/Sidebar.vue'
+import Navbar from '@/components/common/Navbar.vue'
 import Swal from 'sweetalert2'
-import api from '../api/index.js'
+import api from '@/api/index.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
