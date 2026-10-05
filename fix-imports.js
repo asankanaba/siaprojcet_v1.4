@@ -24,11 +24,11 @@ filesToFix.forEach(filename => {
     let content = fs.readFileSync(filePath, 'utf8');
     
     // Replace the broken Sidebar import with the working @ alias
-    const brokenImport = "import Sidebar from '../components/common/Sidebar.vue'";
+    const brokenImport = "import Sidebar from '@/components/common/Sidebar.vue'";
     const fixedImport = "import Sidebar from '@/components/common/Sidebar.vue'";
     
     // Also fix Navbar just in case
-    const brokenNavbar = "import Navbar from '../components/common/Navbar.vue'";
+    const brokenNavbar = "import Navbar from '@/components/common/Navbar.vue'";
     const fixedNavbar = "import Navbar from '@/components/common/Navbar.vue'";
     
     if (content.includes(brokenImport)) {
