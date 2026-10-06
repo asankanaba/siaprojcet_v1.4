@@ -171,7 +171,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import Sidebar from '@/components/common/Sidebar.vue';
 import Navbar from '@/components/common/Navbar.vue';
-import api from '@/api/index.js';
+import { API_BASE_URL } from '@/api/index.js';
 import Swal from 'sweetalert2';
 
 const router = useRouter();
@@ -287,7 +287,7 @@ const loadReports = async () => {
 };
 
 // ============================================
-// EXPORT REPORT
+// EXPORT REPORT — FIXED
 // ============================================
 const exportReport = async () => {
   try {
@@ -306,7 +306,8 @@ const exportReport = async () => {
     const formData = new FormData();
     formData.append('type', 'all');
 
-    const response = await fetch('http://localhost/smart-pos-api/api/export_hr_excel.php', {
+    // ✅ FIXED: use API_BASE_URL instead of hardcoded localhost
+    const response = await fetch(`${API_BASE_URL}/export_hr_excel.php`, {
       method: 'POST',
       body: formData,
     });
@@ -330,6 +331,8 @@ const exportReport = async () => {
         timer: 2000,
         showConfirmButton: false,
       });
+    } else {
+      throw new Error(`Export failed with status ${response.status}`);
     }
   } catch (error) {
     console.error('Error exporting report:', error);
