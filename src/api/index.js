@@ -1,14 +1,13 @@
 // ============================================
 // 📁 File: src/api/index.js
-// 🔌 Axios — direct calls to InfinityFree backend
+// 🔌 Axios — direct calls with form-urlencoded POSTs
 // ============================================
-// NOTE: We call InfinityFree directly from the browser.
-// We do NOT use a Netlify proxy because InfinityFree's CDN
-// (openresty) blocks server-to-server requests with a JS anti-bot
-// challenge that Netlify's proxy can't solve.
-//
-// Browsers CAN reach InfinityFree directly — the anti-bot only
-// blocks non-browser clients.
+// ⚠️ WHY FORM-ENCODED:
+// InfinityFree's CDN challenges JSON POSTs and CORS preflights.
+// Sending application/x-www-form-urlencoded avoids both:
+//   - Browsers don't send preflight for urlencoded content-type
+//   - InfinityFree's CDN doesn't inject its anti-bot challenge
+// PHP reads it via $_POST or via parse_str() on php://input.
 // ============================================
 import axios from 'axios';
 
@@ -25,27 +24,67 @@ const API_BASE_URL2 = IS_DEV
   ? (import.meta.env.VITE_API_BASE_URL2 || LOCAL_API_URL).replace(/\/$/, '')
   : PROD_API_URL;
 
-const COMMON_HEADERS = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest'
-};
-
 console.log('🔌 API Base URL :', API_BASE_URL);
 console.log('🔌 API Base URL2:', API_BASE_URL2);
+
+// Only "simple" headers — no Content-Type, no Authorization
+// (they trigger CORS preflight which InfinityFree blocks)
+const COMMON_HEADERS = {
+  'Accept': 'application/json'
+};
 
 const api  = axios.create({ baseURL: API_BASE_URL,  headers: COMMON_HEADERS, timeout: 30000 });
 const api2 = axios.create({ baseURL: API_BASE_URL2, headers: COMMON_HEADERS, timeout: 30000 });
 
 // ============================================
-// REQUEST INTERCEPTOR
+// REQUEST INTERCEPTOR — form-encode + token in body
 // ============================================
-const attachToken = (config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
+// ⚠️ The JWT is sent in the POST body as `token`, NOT in the
+// Authorization header. Why: any custom header triggers CORS
+// preflight, which InfinityFree blocks. Sending the token in
+// the body keeps everything "simple request" compliant.
+
+const prepareRequest = (config) => {
+  const method = (config.method || 'get').toLowerCase();
+  const isWrite = ['post', 'put', 'patch', 'delete'].includes(method);
+
+  // For write requests, convert body to urlencoded and inject token
+  if (isWrite) {
+    const isPlainObject =
+      config.data &&
+      Object.prototype.toString.call(config.data) === '[object Object]';
+
+    const params = new URLSearchParams();
+
+    if (isPlainObject) {
+      for (const [k, v] of Object.entries(config.data)) {
+        if (v === undefined || v === null) continue;
+        if (typeof v === 'object') {
+          params.append(k, JSON.stringify(v));
+        } else {
+          params.append(k, v);
+        }
+      }
+    }
+
+    // Put JWT in the body — avoids Authorization header preflight
+    const token = localStorage.getItem('token');
+    if (token) {
+      params.append('token', token);
+    }
+
+    config.data = params.toString();
     config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+  } else {
+    // For GET requests, send token as a query param (also preflight-free)
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.params = config.params || {};
+      config.params.token = token;
+    }
   }
+
   return config;
 };
 
@@ -54,8 +93,8 @@ const onRequestError = (error) => {
   return Promise.reject(error);
 };
 
-api.interceptors.request.use(attachToken, onRequestError);
-api2.interceptors.request.use(attachToken, onRequestError);
+api.interceptors.request.use(prepareRequest, onRequestError);
+api2.interceptors.request.use(prepareRequest, onRequestError);
 
 // ============================================
 // RESPONSE INTERCEPTOR
@@ -102,7 +141,7 @@ api.interceptors.response.use(handleSuccess, handleError);
 api2.interceptors.response.use(handleSuccess, handleError);
 
 // ============================================
-// SHORT-HAND
+// SHORT-HAND EXPORTS
 // ============================================
 export const get   = (url, config = {}) => api.get(url, config);
 export const post  = (url, data = {}, config = {}) => api.post(url, data, config);
