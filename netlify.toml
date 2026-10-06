@@ -9,26 +9,45 @@
   command = "npm run build"
 
 # ============================================================
-# SPA FALLBACK
-# Ensures direct visits / refreshes to routes like
-#   /careers/senior-backend-engineer-53
-#   /payments/return?status=success&ref=...
-# serve index.html instead of 404ing on Netlify.
-# Vue Router then handles the route client-side.
+# API PROXY — forwards /api/* to InfinityFree backend
+# ============================================================
+# Why this exists:
+#   InfinityFree's edge CDN intercepts OPTIONS (CORS preflight)
+#   requests and returns a static HTML response — PHP never runs.
+#   That breaks every cross-origin browser call.
+#
+# How it works:
+#   The browser calls https://siaposkok.netlify.app/api/auth.php
+#   Netlify intercepts /api/* and forwards server-side to
+#   https://smartpossiaaaa.kesug.com/smart-pos-api/api/auth.php
+#   The browser sees a same-origin request → no preflight → no CORS.
+#
+# IMPORTANT: The proxy is transparent and preserves method, headers,
+# and body. Backend CORS headers are ignored since the browser never
+# sees InfinityFree directly.
+# ============================================================
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://smartpossiaaaa.kesug.com/smart-pos-api/api/:splat"
+  status = 200
+  force = true
+
+# Also proxy the media/uploads path (product images etc.)
+[[redirects]]
+  from = "/media/*"
+  to = "https://smartpossiaaaa.kesug.com/smart-pos-api/uploads/:splat"
+  status = 200
+  force = true
+
+# ============================================================
+# SPA FALLBACK — everything else serves index.html
+# (Vue Router handles client-side routing)
 # ============================================================
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# ============================================================
-# NOTE: No /api/* proxy here.
-# The frontend calls the backend directly via VITE_API_BASE_URL
-# (see .env.production), which points to
-#   https://smartpossiaaaa.kesug.com/smart-pos-api/api
-# The backend already sends Access-Control-Allow-Origin: *,
-# so a proxy is unnecessary and can break auth headers.
-# ============================================================
 
 # ============================================================
 # SECURITY HEADERS
@@ -53,3 +72,4 @@
 # ============================================================
 [build.environment]
   NODE_VERSION = "20"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_API_BASE_URL,VITE_API_BASE_URL2,VITE_MEDIA_BASE_URL,VITE_API_URL,VITE_PUBLIC_BASE_URL"

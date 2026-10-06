@@ -1,38 +1,34 @@
 // ============================================
 // 📁 File: src/api/index.js
-// 🔌 Axios instances — Local + Deployed backend
+// 🔌 Axios instances — Netlify proxies /api/* to backend
 // ============================================
 import axios from 'axios';
 
 // ============================================
 // API CONFIGURATION
 // ============================================
-// Precedence:
-//   1. VITE_API_BASE_URL (from .env or Netlify env vars) — always wins
-//   2. Local dev fallback   → http://localhost/smart-pos-api/api
-//   3. Production fallback  → https://smartpossiaaaa.kesug.com/smart-pos-api/api
+// In DEV (vite dev server): talk directly to LAN XAMPP.
+// In PROD (Netlify): use relative /api — Netlify proxies it to InfinityFree.
 //
-// We NEVER use a relative path like /api — Netlify does not proxy /api/*.
+// Why relative in prod:
+//   InfinityFree's CDN blocks OPTIONS (CORS preflight) requests.
+//   By making the browser call same-origin `/api/*`, no preflight is sent.
+//   Netlify's redirect (see netlify.toml) forwards it server-side.
+//
+// Never hardcode the InfinityFree URL in production — it triggers CORS.
 
-const LOCAL_FALLBACK    = 'http://localhost/smart-pos-api/api';
-const PRODUCTION_FALLBACK = 'https://smartpossiaaaa.kesug.com/smart-pos-api/api';
+const IS_DEV = import.meta.env.DEV;
 
-function resolveBase(envVar, prodDefault = PRODUCTION_FALLBACK) {
-  // 1. Env var wins
-  const fromEnv = import.meta.env[envVar];
-  if (fromEnv && typeof fromEnv === 'string' && fromEnv.length > 0) {
-    return fromEnv.replace(/\/$/, '');
-  }
-  // 2. Local dev fallback
-  if (import.meta.env.DEV) {
-    return LOCAL_FALLBACK.replace(/\/$/, '');
-  }
-  // 3. Production fallback
-  return prodDefault.replace(/\/$/, '');
-}
+const LOCAL_API_URL  = 'http://192.168.12.3/smart-pos-api/api';
+const LOCAL_API_URL2 = 'http://192.168.12.3/smart-pos-api/api';
 
-const API_BASE_URL  = resolveBase('VITE_API_BASE_URL',  PRODUCTION_FALLBACK);
-const API_BASE_URL2 = resolveBase('VITE_API_BASE_URL2', PRODUCTION_FALLBACK);
+const API_BASE_URL = IS_DEV
+  ? (import.meta.env.VITE_API_BASE_URL || LOCAL_API_URL).replace(/\/$/, '')
+  : '/api';
+
+const API_BASE_URL2 = IS_DEV
+  ? (import.meta.env.VITE_API_BASE_URL2 || LOCAL_API_URL2).replace(/\/$/, '')
+  : '/api';
 
 const COMMON_HEADERS = {
   'Content-Type': 'application/json',
@@ -42,14 +38,6 @@ const COMMON_HEADERS = {
 
 console.log('🔌 API Base URL :', API_BASE_URL);
 console.log('🔌 API Base URL2:', API_BASE_URL2);
-
-// Safety check — refuse to ship a localhost URL to production
-if (!import.meta.env.DEV && API_BASE_URL.includes('localhost')) {
-  console.error(
-    '🚨 Production build is using localhost as the API base URL. ' +
-    'Set VITE_API_BASE_URL in Netlify → Site configuration → Environment variables.'
-  );
-}
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -74,9 +62,10 @@ const attachToken = (config) => {
   }
 
   const isLocalDev =
-    import.meta.env.DEV &&
+    IS_DEV &&
     (config.baseURL?.includes('localhost') ||
-      config.baseURL?.includes('127.0.0.1'));
+      config.baseURL?.includes('127.0.0.1') ||
+      config.baseURL?.includes('192.168.'));
 
   if (isLocalDev && import.meta.env.VITE_VERBOSE_API === 'true') {
     console.log(
@@ -99,7 +88,7 @@ api2.interceptors.request.use(attachToken, onRequestError);
 // RESPONSE INTERCEPTOR — global error handling
 // ============================================
 const handleSuccess = (response) => {
-  if (import.meta.env.DEV) {
+  if (IS_DEV) {
     console.log(`📥 ${response.config.url}`, response.data);
   }
   return response;
@@ -110,7 +99,8 @@ const handleError = (error) => {
 
   if (response) {
     const status = response.status;
-    const message = response.data?.message || response.statusText || 'Server error';
+    const message =
+      response.data?.message || response.statusText || 'Server error';
 
     console.error(`❌ API ${status}:`, message);
 
