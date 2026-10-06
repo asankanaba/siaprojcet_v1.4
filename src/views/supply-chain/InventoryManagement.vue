@@ -36,9 +36,17 @@
     <div class="filters-row">
       <div class="search-box">
         <i class="fas fa-search"></i>
-        <input v-model="searchQuery" placeholder="Search products..." @input="filterProducts" />
+        <input
+          v-model="searchQuery"
+          placeholder="Search products..."
+          @input="filterProducts"
+        />
       </div>
-      <select v-model="stockFilter" class="filter-select" @change="filterProducts">
+      <select
+        v-model="stockFilter"
+        class="filter-select"
+        @change="filterProducts"
+      >
         <option value="">All Stock</option>
         <option value="low">Low Stock</option>
         <option value="out">Out of Stock</option>
@@ -68,8 +76,10 @@
             <td colspan="7" class="text-center">No products found</td>
           </tr>
           <tr v-for="product in filteredProducts" :key="product.id">
-            <td><strong>{{ product.name }}</strong></td>
-            <td>{{ product.category_name || 'Uncategorized' }}</td>
+            <td>
+              <strong>{{ product.name }}</strong>
+            </td>
+            <td>{{ product.category_name || "Uncategorized" }}</td>
             <td>₱{{ formatPrice(product.price) }}</td>
             <td>
               <span :class="getStockClass(product.stock)">
@@ -78,7 +88,11 @@
             </td>
             <td>{{ product.low_stock_threshold || 5 }}</td>
             <td>
-              <span :class="getStatusClass(product.stock, product.low_stock_threshold)">
+              <span
+                :class="
+                  getStatusClass(product.stock, product.low_stock_threshold)
+                "
+              >
                 {{ getStockStatus(product.stock, product.low_stock_threshold) }}
               </span>
             </td>
@@ -93,19 +107,32 @@
     </div>
 
     <!-- Restock Modal -->
-    <div v-if="showRestockModal" class="modal-overlay" @click.self="showRestockModal = false">
+    <div
+      v-if="showRestockModal"
+      class="modal-overlay"
+      @click.self="showRestockModal = false"
+    >
       <div class="modal-content">
         <div class="modal-header">
           <h5>Restock Product</h5>
-          <button @click="showRestockModal = false" class="btn-close">&times;</button>
+          <button @click="showRestockModal = false" class="btn-close">
+            &times;
+          </button>
         </div>
         <div class="modal-body">
           <p><strong>Product:</strong> {{ restockProduct?.name }}</p>
           <p><strong>Current Stock:</strong> {{ restockProduct?.stock }}</p>
+
           <div class="form-group">
             <label>Quantity to Add <span class="required">*</span></label>
-            <input v-model="restockQuantity" type="number" class="form-control" min="1" />
+            <input
+              v-model="restockQuantity"
+              type="number"
+              class="form-control"
+              min="1"
+            />
           </div>
+
           <div class="form-group">
             <label>Reason</label>
             <select v-model="restockReason" class="form-control">
@@ -115,15 +142,37 @@
               <option value="other">Other</option>
             </select>
           </div>
+
           <div class="form-group">
             <label>Notes</label>
-            <textarea v-model="restockNotes" class="form-control" rows="2" placeholder="Additional notes..."></textarea>
+            <textarea
+              v-model="restockNotes"
+              class="form-control"
+              rows="2"
+              placeholder="Additional notes..."
+            ></textarea>
+          </div>
+
+          <!-- ⚡ NEW: Info box -->
+          <div class="info-box" style="margin-top: 1rem">
+            <i class="fas fa-info-circle"></i>
+            This will create a <strong>restock request</strong> that goes to
+            <strong>Finance</strong> for approval before ordering from the
+            supplier.
           </div>
         </div>
+
+        <!-- ⚡ Updated modal footer -->
         <div class="modal-footer">
-          <button @click="showRestockModal = false" class="btn btn-secondary">Cancel</button>
-          <button @click="processRestock" class="btn btn-primary" :disabled="restocking">
-            {{ restocking ? 'Processing...' : 'Restock' }}
+          <button @click="showRestockModal = false" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button
+            @click="processRestock"
+            class="btn btn-primary"
+            :disabled="restocking"
+          >
+            {{ restocking ? "Submitting…" : "Submit Request" }}
           </button>
         </div>
       </div>
@@ -132,147 +181,175 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useProductStore } from '@/stores/products'
-import api from '@/api/index.js'
-import Swal from 'sweetalert2'
+import { ref, computed, onMounted } from "vue";
+import { useProductStore } from "@/stores/products";
+import api from "@/api/index.js";
+import Swal from "sweetalert2";
 
-const productStore = useProductStore()
+const productStore = useProductStore();
 
-const loading = ref(false)
-const restocking = ref(false)
-const searchQuery = ref('')
-const stockFilter = ref('')
-const showRestockModal = ref(false)
-const restockProduct = ref(null)
-const restockQuantity = ref(1)
-const restockReason = ref('restock')
-const restockNotes = ref('')
+const loading = ref(false);
+const restocking = ref(false);
+const searchQuery = ref("");
+const stockFilter = ref("");
+const showRestockModal = ref(false);
+const restockProduct = ref(null);
+const restockQuantity = ref(1);
+const restockReason = ref("restock");
+const restockNotes = ref("");
 
 // Computed
-const products = computed(() => productStore.products)
+const products = computed(() => productStore.products);
 
 const lowStockItems = computed(() => {
-  return products.value.filter(p => p.stock > 0 && p.stock <= (p.low_stock_threshold || 5)).length
-})
+  return products.value.filter(
+    (p) => p.stock > 0 && p.stock <= (p.low_stock_threshold || 5),
+  ).length;
+});
 
 const outOfStockItems = computed(() => {
-  return products.value.filter(p => p.stock <= 0).length
-})
+  return products.value.filter((p) => p.stock <= 0).length;
+});
 
 const totalValue = computed(() => {
-  return products.value.reduce((sum, p) => sum + (p.stock * p.price), 0)
-})
+  return products.value.reduce((sum, p) => sum + p.stock * p.price, 0);
+});
 
 const filteredProducts = computed(() => {
-  let result = products.value
-  
+  let result = products.value;
+
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(p => p.name.toLowerCase().includes(query))
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter((p) => p.name.toLowerCase().includes(query));
   }
-  
-  if (stockFilter.value === 'low') {
-    result = result.filter(p => p.stock > 0 && p.stock <= (p.low_stock_threshold || 5))
-  } else if (stockFilter.value === 'out') {
-    result = result.filter(p => p.stock <= 0)
-  } else if (stockFilter.value === 'ok') {
-    result = result.filter(p => p.stock > (p.low_stock_threshold || 5))
+
+  if (stockFilter.value === "low") {
+    result = result.filter(
+      (p) => p.stock > 0 && p.stock <= (p.low_stock_threshold || 5),
+    );
+  } else if (stockFilter.value === "out") {
+    result = result.filter((p) => p.stock <= 0);
+  } else if (stockFilter.value === "ok") {
+    result = result.filter((p) => p.stock > (p.low_stock_threshold || 5));
   }
-  
-  return result
-})
+
+  return result;
+});
 
 // Methods
 const formatPrice = (amount) => {
-  return Number(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-}
+  return Number(amount)
+    .toFixed(2)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
 
 const getStockClass = (stock) => {
-  if (stock <= 0) return 'stock-out'
-  if (stock <= 5) return 'stock-low'
-  return 'stock-ok'
-}
+  if (stock <= 0) return "stock-out";
+  if (stock <= 5) return "stock-low";
+  return "stock-ok";
+};
 
 const getStatusClass = (stock, threshold) => {
-  if (stock <= 0) return 'status-danger'
-  if (stock <= (threshold || 5)) return 'status-warning'
-  return 'status-success'
-}
+  if (stock <= 0) return "status-danger";
+  if (stock <= (threshold || 5)) return "status-warning";
+  return "status-success";
+};
 
 const getStockStatus = (stock, threshold) => {
-  if (stock <= 0) return 'OUT OF STOCK'
-  if (stock <= (threshold || 5)) return 'LOW STOCK'
-  return 'IN STOCK'
-}
+  if (stock <= 0) return "OUT OF STOCK";
+  if (stock <= (threshold || 5)) return "LOW STOCK";
+  return "IN STOCK";
+};
 
 const refreshData = async () => {
-  loading.value = true
-  await productStore.loadProducts()
-  loading.value = false
-}
+  loading.value = true;
+  await productStore.loadProducts();
+  loading.value = false;
+};
 
 const filterProducts = () => {
   // Computed handles filtering
-}
+};
 
 const openRestockModal = (product) => {
-  restockProduct.value = product
-  restockQuantity.value = 1
-  restockReason.value = 'restock'
-  restockNotes.value = ''
-  showRestockModal.value = true
-}
+  restockProduct.value = product;
+  restockQuantity.value = 1;
+  restockReason.value = "restock";
+  restockNotes.value = "";
+  showRestockModal.value = true;
+};
 
 const processRestock = async () => {
   if (!restockQuantity.value || restockQuantity.value <= 0) {
     await Swal.fire({
-      icon: 'warning',
-      title: 'Validation Error',
-      text: 'Please enter a valid quantity',
-      confirmButtonColor: '#4F46E5'
-    })
-    return
+      icon: "warning",
+      title: "Validation Error",
+      text: "Please enter a valid quantity",
+      confirmButtonColor: "#4F46E5",
+    });
+    return;
   }
 
-  restocking.value = true
+  restocking.value = true;
   try {
-    const currentStock = parseInt(restockProduct.value.stock) || 0
-    const newStock = currentStock + parseInt(restockQuantity.value)
-    
+    const currentStock = parseInt(restockProduct.value.stock) || 0;
+    const newStock = currentStock + parseInt(restockQuantity.value);
+
     await api.put(`/products.php?id=${restockProduct.value.id}`, {
-      stock: newStock
-    })
-    
-    showRestockModal.value = false
-    await refreshData()
-    
+      stock: newStock,
+    });
+
+    showRestockModal.value = false;
+    await refreshData();
+
     await Swal.fire({
-      icon: 'success',
-      title: 'Restock Complete!',
+      icon: "success",
+      title: "Restock Complete!",
       text: `Added ${restockQuantity.value} units to ${restockProduct.value.name}`,
-      confirmButtonColor: '#4F46E5',
+      confirmButtonColor: "#4F46E5",
       timer: 1500,
-      showConfirmButton: false
-    })
+      showConfirmButton: false,
+    });
   } catch (error) {
     await Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'Failed to restock product',
-      confirmButtonColor: '#4F46E5'
-    })
+      icon: "error",
+      title: "Error",
+      text: "Failed to restock product",
+      confirmButtonColor: "#4F46E5",
+    });
   } finally {
-    restocking.value = false
+    restocking.value = false;
   }
-}
+};
 
 onMounted(() => {
-  refreshData()
-})
+  refreshData();
+});
 </script>
 
 <style scoped>
+.info-box {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.4;
+}
+
+.info-box i {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+body.dark-mode .info-box {
+  background: rgba(49, 46, 129, 0.5);
+  color: #818cf8;
+}
+
 .inventory-container {
   padding: 1.5rem;
   max-width: 1400px;
@@ -297,7 +374,7 @@ onMounted(() => {
 }
 
 .page-header h2 i {
-  color: #4F46E5;
+  color: #4f46e5;
 }
 
 .page-header p {
@@ -320,7 +397,7 @@ body.dark-mode .page-header p {
   background: white;
   border-radius: 10px;
   margin-bottom: 1rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   flex-wrap: wrap;
 }
 
@@ -387,7 +464,7 @@ body.dark-mode .search-box {
 }
 
 .search-box:focus-within {
-  border-color: #4F46E5;
+  border-color: #4f46e5;
 }
 
 .search-box i {
@@ -433,7 +510,7 @@ body.dark-mode .filter-select {
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow-x: auto;
 }
 
@@ -551,7 +628,7 @@ body.dark-mode .status-danger {
 }
 
 .btn-restock {
-  background: #4F46E5;
+  background: #4f46e5;
   color: white;
   border: none;
   padding: 0.2rem 0.6rem;
@@ -565,7 +642,7 @@ body.dark-mode .status-danger {
 }
 
 .btn-restock:hover {
-  background: #4338CA;
+  background: #4338ca;
 }
 
 .btn-secondary {
@@ -596,7 +673,9 @@ body.dark-mode .btn-secondary:hover {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Modal styles - reuse from Suppliers.vue */
@@ -606,7 +685,7 @@ body.dark-mode .btn-secondary:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -629,8 +708,14 @@ body.dark-mode .modal-content {
 }
 
 @keyframes slideDown {
-  from { transform: translateY(-50px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -711,7 +796,7 @@ body.dark-mode .form-control {
 
 .form-control:focus {
   outline: none;
-  border-color: #4F46E5;
+  border-color: #4f46e5;
 }
 
 textarea.form-control {
@@ -761,12 +846,12 @@ body.dark-mode .btn-secondary:hover {
 }
 
 .btn-primary {
-  background: #4F46E5;
+  background: #4f46e5;
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #4338CA;
+  background: #4338ca;
 }
 
 .btn-primary:disabled {
@@ -778,20 +863,20 @@ body.dark-mode .btn-secondary:hover {
   .inventory-container {
     padding: 1rem;
   }
-  
+
   .page-header {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .filters-row {
     flex-direction: column;
   }
-  
+
   .search-box {
     max-width: 100%;
   }
-  
+
   .stats-row {
     flex-direction: column;
     gap: 0.5rem;
