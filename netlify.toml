@@ -2,8 +2,9 @@
 # 📁 File: netlify.toml
 # 🚀 Netlify deployment config
 # ============================================================
-# ⚠️ REDIRECT ORDER IS CRITICAL — Netlify evaluates top-to-bottom.
-#    /api/* and /media/* MUST come BEFORE the SPA fallback /*.
+# NOTE: We do NOT proxy /api/* through Netlify. InfinityFree's
+# CDN blocks server-to-server requests. The frontend calls
+# InfinityFree directly from the browser.
 # ============================================================
 
 [build]
@@ -11,25 +12,7 @@
   command = "npm run build"
 
 # ============================================================
-# 1. API PROXY — /api/* → InfinityFree backend
-# ============================================================
-[[redirects]]
-  from = "/api/*"
-  to = "https://smartpossiaaaa.kesug.com/smart-pos-api/api/:splat"
-  status = 200
-  force = true
-
-# ============================================================
-# 2. MEDIA PROXY — /media/* → InfinityFree uploads
-# ============================================================
-[[redirects]]
-  from = "/media/*"
-  to = "https://smartpossiaaaa.kesug.com/smart-pos-api/uploads/:splat"
-  status = 200
-  force = true
-
-# ============================================================
-# 3. SPA FALLBACK — everything else → index.html
+# SPA FALLBACK — everything serves index.html
 # ============================================================
 [[redirects]]
   from = "/*"
