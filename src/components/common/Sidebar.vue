@@ -166,6 +166,15 @@ const notifStore = useHRNotificationsStore()
 const isCollapsed = ref(false)
 
 // ============================================
+// DEMO ROLE PREVIEW FILTER
+// ============================================
+const demoRoleFilter = ref(localStorage.getItem('demoRoleFilter') || 'all')
+
+const handleDemoFilterChange = (e) => {
+  demoRoleFilter.value = e.detail?.filter || 'all'
+}
+
+// ============================================
 // MENU CONFIGURATION
 // ============================================
 const menuConfig = {
@@ -225,48 +234,25 @@ const menuConfig = {
 const SHARED_MODULES = ['budget_requests']
 
 // ============================================
-// ACTIVE LINK DETECTION (Vue Router 4)
+// ACTIVE LINK DETECTION
 // ============================================
 const EXACT_PATHS = [
-  '/dashboard',
-  '/products',
-  '/sales',
-  '/customers',
-  '/staff',
-  '/pos',
-  '/hr/dashboard',
-  '/hr/employees',
-  '/hr/attendance',
-  '/hr/notifications',
-  '/hr/payroll',
-  '/hr/jobs',
-  '/hr/reports',
-  '/finance/dashboard',
-  '/finance/transactions',
-  '/finance/wallet',
-  '/finance/budget',
-  '/finance/budget-approvals',
-  '/finance/product-approvals',
+  '/dashboard', '/products', '/sales', '/customers', '/staff', '/pos',
+  '/hr/dashboard', '/hr/employees', '/hr/attendance', '/hr/notifications',
+  '/hr/payroll', '/hr/jobs', '/hr/reports',
+  '/finance/dashboard', '/finance/transactions', '/finance/wallet',
+  '/finance/budget', '/finance/budget-approvals', '/finance/product-approvals',
   '/finance/reports',
-  '/supply-chain',
-  '/supply-chain/inventory',
-  '/supply-chain/purchase-orders',
-  '/supply-chain/requests',
-  '/supply-chain/notifications',
-  '/supply-chain/procurement/requisitions',
-  '/supply-chain/procurement/rfqs',
-  '/supply-chain/procurement/goods-receipt',
-  '/supply-chain/procurement/invoices',
-  '/supply-chain/procurement/payments',
-  '/supply-chain/procurement/supplier-performance',
-  '/my-attendance',
-  '/settings'
+  '/supply-chain', '/supply-chain/inventory', '/supply-chain/purchase-orders',
+  '/supply-chain/requests', '/supply-chain/notifications',
+  '/supply-chain/procurement/requisitions', '/supply-chain/procurement/rfqs',
+  '/supply-chain/procurement/goods-receipt', '/supply-chain/procurement/invoices',
+  '/supply-chain/procurement/payments', '/supply-chain/procurement/supplier-performance',
+  '/my-attendance', '/settings'
 ]
 
 const isActive = (path) => {
-  if (EXACT_PATHS.includes(path)) {
-    return route.path === path
-  }
+  if (EXACT_PATHS.includes(path)) return route.path === path
   return route.path === path || route.path.startsWith(path + '/')
 }
 
@@ -278,7 +264,15 @@ const unreadCount = computed(() => notifStore.unreadCount)
 const hasHRRole = () => authStore.hasAnyRole(['hr', 'admin', 'super_admin'])
 const hasFinanceRole = () => authStore.hasAnyRole(['finance', 'admin', 'super_admin'])
 
+// ⚡ NEW: checks if a section should show based on demo filter
+const isSectionAllowed = (section) => {
+  if (demoRoleFilter.value === 'all') return true
+  if (demoRoleFilter.value === 'management') return section === 'management'
+  return section === demoRoleFilter.value
+}
+
 const hasSection = (section) => {
+  if (!isSectionAllowed(section)) return false  // ⚡ filter applied
   const items = menuConfig[section]?.items || []
   return items.some(item => {
     if (item.roles) {
@@ -337,9 +331,7 @@ const toggleSidebar = () => {
 
 const fetchUnreadCount = async () => {
   const userId = authStore.user?.id
-  if (userId) {
-    await notifStore.fetch(userId, 5)
-  }
+  if (userId) await notifStore.fetch(userId, 5)
 }
 
 const handleLogout = async () => {
@@ -357,12 +349,7 @@ const handleLogout = async () => {
   if (result.isConfirmed) {
     authStore.logout()
     router.push('/login')
-    Swal.fire({
-      icon: 'success',
-      title: 'Logged Out',
-      timer: 1000,
-      showConfirmButton: false
-    })
+    Swal.fire({ icon: 'success', title: 'Logged Out', timer: 1000, showConfirmButton: false })
   }
 }
 
@@ -373,15 +360,18 @@ let intervalId = null
 
 onMounted(() => {
   const saved = localStorage.getItem('sidebarCollapsed')
-  if (saved !== null) {
-    isCollapsed.value = JSON.parse(saved)
-  }
+  if (saved !== null) isCollapsed.value = JSON.parse(saved)
+
+  // Listen for role preview changes
+  window.addEventListener('demo-role-filter-changed', handleDemoFilterChange)
+
   fetchUnreadCount()
   intervalId = setInterval(fetchUnreadCount, 30000)
 })
 
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId)
+  window.removeEventListener('demo-role-filter-changed', handleDemoFilterChange)
 })
 </script>
 

@@ -12,6 +12,9 @@
 
     <!-- Right -->
     <div class="navbar-right">
+      <!-- 🎭 DEMO ROLE PREVIEW TOGGLE -->
+      <RolePreviewToggle />
+
       <!-- Notifications -->
       <div ref="notifRef" class="notif-wrapper">
         <button
@@ -130,6 +133,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useHRNotificationsStore } from '@/stores/hrNotifications'
 import { getProfilePicture } from '@/utils/imageHelper'
+import RolePreviewToggle from './RolePreviewToggle.vue'   // 🎭 DEMO TOGGLE
 import Swal from 'sweetalert2'
 
 const emit = defineEmits(['toggle-sidebar'])
