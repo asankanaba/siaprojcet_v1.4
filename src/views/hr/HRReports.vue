@@ -171,7 +171,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import Sidebar from '@/components/common/Sidebar.vue';
 import Navbar from '@/components/common/Navbar.vue';
-import { API_BASE_URL } from '@/api/index.js';
+import api, { API_BASE_URL } from '@/api/index.js';   // ← FIXED (added api default import)
 import Swal from 'sweetalert2';
 
 const router = useRouter();
