@@ -1,3 +1,0 @@
-/api/*     https://smartpossiaaaa.kesug.com/smart-pos-api/api/:splat     200
-/media/*   https://smartpossiaaaa.kesug.com/smart-pos-api/uploads/:splat  200
-/*         /index.html                                                    200
