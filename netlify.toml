@@ -1,39 +1,27 @@
 # ============================================================
 # 📁 File: netlify.toml
-# 🚀 Netlify deployment config for Smart POS frontend
+# 🚀 Netlify deployment config
+# ============================================================
+# ⚠️ REDIRECT ORDER IS CRITICAL — Netlify evaluates top-to-bottom.
+#    /api/* and /media/* MUST come BEFORE the SPA fallback /*.
 # ============================================================
 
 [build]
-  # Vite outputs to /dist by default
   publish = "dist"
   command = "npm run build"
 
 # ============================================================
-# API PROXY — forwards /api/* to InfinityFree backend
+# 1. API PROXY — /api/* → InfinityFree backend
 # ============================================================
-# Why this exists:
-#   InfinityFree's edge CDN intercepts OPTIONS (CORS preflight)
-#   requests and returns a static HTML response — PHP never runs.
-#   That breaks every cross-origin browser call.
-#
-# How it works:
-#   The browser calls https://siaposkok.netlify.app/api/auth.php
-#   Netlify intercepts /api/* and forwards server-side to
-#   https://smartpossiaaaa.kesug.com/smart-pos-api/api/auth.php
-#   The browser sees a same-origin request → no preflight → no CORS.
-#
-# IMPORTANT: The proxy is transparent and preserves method, headers,
-# and body. Backend CORS headers are ignored since the browser never
-# sees InfinityFree directly.
-# ============================================================
-
 [[redirects]]
   from = "/api/*"
   to = "https://smartpossiaaaa.kesug.com/smart-pos-api/api/:splat"
   status = 200
   force = true
 
-# Also proxy the media/uploads path (product images etc.)
+# ============================================================
+# 2. MEDIA PROXY — /media/* → InfinityFree uploads
+# ============================================================
 [[redirects]]
   from = "/media/*"
   to = "https://smartpossiaaaa.kesug.com/smart-pos-api/uploads/:splat"
@@ -41,8 +29,7 @@
   force = true
 
 # ============================================================
-# SPA FALLBACK — everything else serves index.html
-# (Vue Router handles client-side routing)
+# 3. SPA FALLBACK — everything else → index.html
 # ============================================================
 [[redirects]]
   from = "/*"
@@ -59,9 +46,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# ============================================================
-# CACHE STATIC ASSETS
-# ============================================================
 [[headers]]
   for = "/assets/*"
   [headers.values]
