@@ -389,9 +389,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import api from '@/api/index'
+
+const route  = useRoute()
+const router = useRouter()
 
 const rows    = ref([])
 const stats   = reactive({})
@@ -491,15 +495,81 @@ function debouncedLoad() {
   debounceTimer = setTimeout(load, 300)
 }
 
+// ============================================================
+// OPEN DETAIL — reads from row, then fetches full record
+// ============================================================
 async function openDetail(p) {
   detail.value = p
+
+  // Push the ?id=N into the URL so shareable/bookmarkable
+  if (String(route.query.id) !== String(p.id)) {
+    router.replace({ query: { ...route.query, id: p.id } })
+  }
+
   try {
     const res = await api.get('/payments.php', { params: { id: p.id } })
     if (res.data?.success) detail.value = res.data.data
   } catch (e) { /* keep list data */ }
 }
-function closeDetail() { detail.value = null }
 
+function closeDetail() {
+  detail.value = null
+
+  // Clean up the ?id= from URL
+  if (route.query.id) {
+    const q = { ...route.query }
+    delete q.id
+    router.replace({ query: q })
+  }
+}
+
+// ============================================================
+// AUTO-OPEN from ?id=N on load AND on route change
+// ============================================================
+async function openDetailFromQuery() {
+  const id = route.query.id
+  if (!id) {
+    if (detail.value) detail.value = null
+    return
+  }
+  if (detail.value && String(detail.value.id) === String(id)) return
+
+  // Try to find in already-loaded rows
+  let row = rows.value.find(r => String(r.id) === String(id))
+
+  // If not loaded yet (race condition on page load), wait for next tick
+  if (!row && loading.value) {
+    await new Promise(resolve => {
+      const unwatch = watch(loading, (v) => {
+        if (!v) { unwatch(); resolve() }
+      })
+    })
+    row = rows.value.find(r => String(r.id) === String(id))
+  }
+
+  if (row) {
+    // Set detail directly (avoid pushing id back to URL)
+    detail.value = row
+    try {
+      const res = await api.get('/payments.php', { params: { id } })
+      if (res.data?.success) detail.value = res.data.data
+    } catch (e) { /* keep list data */ }
+  } else {
+    // Not in list (maybe filtered) — fetch directly
+    try {
+      const res = await api.get('/payments.php', { params: { id } })
+      if (res.data?.success && res.data.data) {
+        detail.value = res.data.data
+      }
+    } catch (e) {
+      console.warn('Could not load payment', id)
+    }
+  }
+}
+
+// ============================================================
+// SYNC
+// ============================================================
 async function syncOne(p) {
   syncing.value = p.id
   try {
@@ -660,7 +730,13 @@ function prettyJson(v) {
   } catch (e) { return v }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  await openDetailFromQuery()
+})
+
+// React to browser back/forward or direct URL change
+watch(() => route.query.id, () => openDetailFromQuery())
 </script>
 
 <style scoped>
