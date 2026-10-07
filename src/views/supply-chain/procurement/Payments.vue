@@ -90,20 +90,8 @@
         <option value="cheque">Cheque</option>
       </select>
 
-      <input
-        v-model="filters.date_from"
-        type="date"
-        class="pm-select"
-        @change="load"
-        title="From date"
-      />
-      <input
-        v-model="filters.date_to"
-        type="date"
-        class="pm-select"
-        @change="load"
-        title="To date"
-      />
+      <input v-model="filters.date_from" type="date" class="pm-select" @change="load" title="From date" />
+      <input v-model="filters.date_to" type="date" class="pm-select" @change="load" title="To date" />
     </section>
 
     <!-- ============================================================ -->
@@ -143,9 +131,7 @@
             <td>
               <strong>{{ p.payment_ref }}</strong>
               <div class="pm-sub">
-                <span v-if="p.paymongo_status" class="muted small">
-                  pm: {{ p.paymongo_status }}
-                </span>
+                <span v-if="p.paymongo_status" class="muted small">pm: {{ p.paymongo_status }}</span>
               </div>
             </td>
             <td>
@@ -165,9 +151,7 @@
             <td class="num">
               <strong>₱{{ formatMoney(p.amount) }}</strong>
               <div v-if="Number(p.refunded_amount) > 0" class="pm-sub">
-                <span class="muted small">
-                  − ₱{{ formatMoney(p.refunded_amount) }} refunded
-                </span>
+                <span class="muted small">− ₱{{ formatMoney(p.refunded_amount) }} refunded</span>
               </div>
             </td>
             <td>
@@ -182,16 +166,8 @@
               </div>
             </td>
             <td class="center actions-cell">
-              <!-- View -->
-              <button
-                class="pm-icon-btn pm-icon-view"
-                title="View details"
-                @click="openDetail(p)"
-              >
-                👁
-              </button>
+              <button class="pm-icon-btn pm-icon-view" title="View details" @click="openDetail(p)">👁</button>
 
-              <!-- Sync from PayMongo -->
               <button
                 v-if="p.paymongo_checkout_id || p.paymongo_intent_id"
                 class="pm-icon-btn pm-icon-sync"
@@ -202,7 +178,6 @@
                 <span :class="{ spinning: syncing === p.id }">⟳</span>
               </button>
 
-              <!-- Copy link -->
               <button
                 v-if="p.checkout_url"
                 class="pm-icon-btn pm-icon-link"
@@ -212,7 +187,6 @@
                 🔗
               </button>
 
-              <!-- Refund -->
               <button
                 v-if="p.status === 'succeeded' || p.status === 'refunded'"
                 class="pm-icon-btn pm-icon-refund"
@@ -229,12 +203,12 @@
     </section>
 
     <!-- ============================================================ -->
-    <!-- DETAIL DRAWER -->
+    <!-- DETAIL MODAL (centered) -->
     <!-- ============================================================ -->
     <Teleport to="body">
-      <div v-if="detail" class="pm-drawer-backdrop" @click.self="closeDetail">
-        <aside class="pm-drawer">
-          <header class="pm-drawer-head">
+      <div v-if="detail" class="pm-modal-backdrop" @click.self="closeDetail">
+        <div class="pm-modal pm-modal-lg">
+          <header class="pm-modal-head">
             <div>
               <h2>{{ detail.payment_ref }}</h2>
               <p class="muted">
@@ -244,8 +218,7 @@
             <button class="pm-icon-btn" @click="closeDetail">✕</button>
           </header>
 
-          <div class="pm-drawer-body">
-            <!-- Amount summary -->
+          <div class="pm-modal-body">
             <div class="pm-drawer-section">
               <div class="pm-drawer-amounts">
                 <div>
@@ -258,32 +231,18 @@
                 </div>
                 <div>
                   <span class="muted">Net</span>
-                  <strong class="success">
-                    ₱{{ formatMoney(Number(detail.amount) - Number(detail.refunded_amount)) }}
-                  </strong>
+                  <strong class="success">₱{{ formatMoney(Number(detail.amount) - Number(detail.refunded_amount)) }}</strong>
                 </div>
               </div>
 
               <div class="pm-drawer-pills">
-                <span class="pm-pill" :class="`pm-pill-${detail.status}`">
-                  {{ statusLabel(detail.status) }}
-                </span>
-                <span v-if="detail.paymongo_status" class="pm-pill pm-pill-neutral">
-                  {{ detail.paymongo_status }}
-                </span>
-                <span v-if="detail.days_overdue > 0" class="pm-overdue">
-                  +{{ detail.days_overdue }}d overdue
-                </span>
+                <span class="pm-pill" :class="`pm-pill-${detail.status}`">{{ statusLabel(detail.status) }}</span>
+                <span v-if="detail.paymongo_status" class="pm-pill pm-pill-neutral">{{ detail.paymongo_status }}</span>
+                <span v-if="detail.days_overdue > 0" class="pm-overdue">+{{ detail.days_overdue }}d overdue</span>
               </div>
 
               <div class="pm-drawer-cta">
-                <button
-                  v-if="detail.checkout_url"
-                  class="pm-btn pm-btn-ghost"
-                  @click="copyLink(detail)"
-                >
-                  🔗 Copy payment link
-                </button>
+                <button v-if="detail.checkout_url" class="pm-btn pm-btn-ghost" @click="copyLink(detail)">🔗 Copy payment link</button>
                 <button
                   v-if="detail.status === 'succeeded' || detail.status === 'refunded'"
                   class="pm-btn pm-btn-ghost"
@@ -304,18 +263,13 @@
               </div>
             </div>
 
-            <!-- Meta grid -->
             <div class="pm-drawer-section">
               <h3>Details</h3>
               <dl class="pm-meta">
-                <dt>Method</dt>
-                <dd>{{ methodLabel(detail.method, detail.payment_method_type) }}</dd>
-                <dt>Amount</dt>
-                <dd>₱{{ formatMoney(detail.amount) }}</dd>
-                <dt>Currency</dt>
-                <dd>{{ detail.currency || 'PHP' }}</dd>
-                <dt>Created</dt>
-                <dd>{{ formatDateTime(detail.created_at) }}</dd>
+                <dt>Method</dt><dd>{{ methodLabel(detail.method, detail.payment_method_type) }}</dd>
+                <dt>Amount</dt><dd>₱{{ formatMoney(detail.amount) }}</dd>
+                <dt>Currency</dt><dd>{{ detail.currency || 'PHP' }}</dd>
+                <dt>Created</dt><dd>{{ formatDateTime(detail.created_at) }}</dd>
                 <dt v-if="detail.paid_at">Paid</dt>
                 <dd v-if="detail.paid_at">{{ formatDateTime(detail.paid_at) }}</dd>
                 <dt v-if="detail.paid_by_name">Recorded by</dt>
@@ -327,7 +281,6 @@
               </dl>
             </div>
 
-            <!-- Related -->
             <div class="pm-drawer-section" v-if="detail.po_number || detail.invoice_number">
               <h3>Related</h3>
               <dl class="pm-meta">
@@ -338,7 +291,6 @@
               </dl>
             </div>
 
-            <!-- PayMongo IDs -->
             <div class="pm-drawer-section" v-if="detail.paymongo_checkout_id || detail.paymongo_intent_id || detail.paymongo_source_id">
               <h3>PayMongo IDs</h3>
               <dl class="pm-meta">
@@ -353,7 +305,6 @@
               </dl>
             </div>
 
-            <!-- Raw payload (collapsible) -->
             <div class="pm-drawer-section" v-if="detail.paymongo_payload">
               <details>
                 <summary class="pm-summary">Raw PayMongo payload</summary>
@@ -361,15 +312,19 @@
               </details>
             </div>
           </div>
-        </aside>
+
+          <footer class="pm-modal-foot">
+            <button class="pm-btn pm-btn-ghost" @click="closeDetail">Close</button>
+          </footer>
+        </div>
       </div>
     </Teleport>
 
     <!-- ============================================================ -->
-    <!-- REFUND MODAL -->
+    <!-- REFUND MODAL (centered) -->
     <!-- ============================================================ -->
     <Teleport to="body">
-      <div v-if="refundModal" class="pm-drawer-backdrop" @click.self="closeRefund">
+      <div v-if="refundModal" class="pm-modal-backdrop" @click.self="closeRefund">
         <div class="pm-modal">
           <header class="pm-modal-head">
             <h3>Refund payment</h3>
@@ -388,9 +343,7 @@
               </div>
               <div>
                 <span class="muted">Refundable</span>
-                <strong class="success">
-                  ₱{{ formatMoney(Number(refundModal.amount) - Number(refundModal.refunded_amount)) }}
-                </strong>
+                <strong class="success">₱{{ formatMoney(Number(refundModal.amount) - Number(refundModal.refunded_amount)) }}</strong>
               </div>
             </div>
 
@@ -416,15 +369,11 @@
               ></textarea>
             </label>
 
-            <div v-if="refundError" class="pm-modal-error">
-              {{ refundError }}
-            </div>
+            <div v-if="refundError" class="pm-modal-error">{{ refundError }}</div>
           </div>
 
           <footer class="pm-modal-foot">
-            <button class="pm-btn pm-btn-ghost" :disabled="refunding" @click="closeRefund">
-              Cancel
-            </button>
+            <button class="pm-btn pm-btn-ghost" :disabled="refunding" @click="closeRefund">Cancel</button>
             <button
               class="pm-btn pm-btn-danger"
               :disabled="refunding || !refundForm.amount || refundForm.amount <= 0"
@@ -459,35 +408,24 @@ const filters = reactive({
   date_to: ''
 })
 
-// Refund state
 const refundModal = ref(null)
 const refundForm  = reactive({ amount: 0, reason: '' })
 const refunding   = ref(false)
 const refundError = ref(null)
 
-// ============================================================
-// COMPUTED
-// ============================================================
-const filteredRows = computed(() => {
-  // Server already filters via query params; this is a fallback safety net
-  return rows.value
-})
+const filteredRows = computed(() => rows.value)
 
-// ============================================================
-// LOADING
-// ============================================================
 async function load() {
   loading.value = true
   error.value = null
   try {
     const params = {}
-    if (filters.status)    params.status = filters.status
-    if (filters.q)         params.q = filters.q
-    // method/date filters are client-side since backend doesn't have them yet
+    if (filters.status) params.status = filters.status
+    if (filters.q)      params.q = filters.q
+
     const res = await api.get('/payments.php', { params })
     let data = res.data?.data || []
 
-    // Client-side filters
     if (filters.method) {
       data = data.filter(p => p.method === filters.method)
     }
@@ -530,15 +468,10 @@ function computeStats(data) {
     const ref = Number(p.refunded_amount || 0)
     totalAmount += amt
 
-    if (p.status === 'succeeded') {
-      succeededCount++; succeededAmount += amt
-    } else if (p.status === 'pending' || p.status === 'processing') {
-      pendingCount++; pendingAmount += amt
-    } else if (p.status === 'failed' || p.status === 'cancelled') {
-      failedCount++; failedAmount += amt
-    } else if (p.status === 'refunded') {
-      refundedCount++; refundedAmount += ref || amt
-    }
+    if (p.status === 'succeeded') { succeededCount++; succeededAmount += amt }
+    else if (p.status === 'pending' || p.status === 'processing') { pendingCount++; pendingAmount += amt }
+    else if (p.status === 'failed' || p.status === 'cancelled') { failedCount++; failedAmount += amt }
+    else if (p.status === 'refunded') { refundedCount++; refundedAmount += ref || amt }
   }
 
   Object.assign(stats, {
@@ -550,9 +483,7 @@ function computeStats(data) {
   })
 }
 
-function reload() {
-  load()
-}
+function reload() { load() }
 
 let debounceTimer = null
 function debouncedLoad() {
@@ -560,9 +491,6 @@ function debouncedLoad() {
   debounceTimer = setTimeout(load, 300)
 }
 
-// ============================================================
-// DETAIL DRAWER
-// ============================================================
 async function openDetail(p) {
   detail.value = p
   try {
@@ -572,32 +500,25 @@ async function openDetail(p) {
 }
 function closeDetail() { detail.value = null }
 
-// ============================================================
-// SYNC
-// ============================================================
 async function syncOne(p) {
   syncing.value = p.id
   try {
     const res = await api.get('/payments.php', { params: { action: 'retrieve', id: p.id } })
     if (res.data?.success) {
-      // Update the row locally
       const idx = rows.value.findIndex(r => r.id === p.id)
       if (idx !== -1 && res.data.data) rows.value[idx] = res.data.data
       if (detail.value?.id === p.id) detail.value = res.data.data
       Swal.fire({
-        icon: 'success',
-        title: 'Synced',
+        icon: 'success', title: 'Synced',
         text: res.data.data?.status || 'Updated',
-        timer: 1200,
-        showConfirmButton: false,
+        timer: 1200, showConfirmButton: false,
         background: document.body.classList.contains('dark-mode') ? 'rgba(20,16,46,0.95)' : '#fff',
         color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#1e293b'
       })
     }
   } catch (e) {
     Swal.fire({
-      icon: 'error',
-      title: 'Sync failed',
+      icon: 'error', title: 'Sync failed',
       text: e?.response?.data?.message || e?.message || 'Try again',
       background: document.body.classList.contains('dark-mode') ? 'rgba(20,16,46,0.95)' : '#fff',
       color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#1e293b'
@@ -607,36 +528,23 @@ async function syncOne(p) {
   }
 }
 
-// ============================================================
-// COPY LINK
-// ============================================================
 async function copyLink(p) {
   if (!p.checkout_url) return
   try {
     await navigator.clipboard.writeText(p.checkout_url)
     Swal.fire({
-      icon: 'success',
-      title: 'Copied',
+      icon: 'success', title: 'Copied',
       text: 'Payment link copied to clipboard',
-      timer: 1200,
-      showConfirmButton: false,
-      background: document.body.classList.contains('dark-mode') ? 'rgba(20,16,46,0.95)' : '#fff',
-      color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#1e293b'
+      timer: 1200, showConfirmButton: false
     })
   } catch (e) {
     Swal.fire({
-      icon: 'info',
-      title: 'Copy manually',
-      html: `<input class="swal2-input" value="${p.checkout_url}" onclick="this.select()" readonly>`,
-      background: document.body.classList.contains('dark-mode') ? 'rgba(20,16,46,0.95)' : '#fff',
-      color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#1e293b'
+      icon: 'info', title: 'Copy manually',
+      html: `<input class="swal2-input" value="${p.checkout_url}" onclick="this.select()" readonly>`
     })
   }
 }
 
-// ============================================================
-// REFUND
-// ============================================================
 function openRefund(p) {
   const refundable = Number(p.amount) - Number(p.refunded_amount || 0)
   if (refundable <= 0) return
@@ -665,13 +573,9 @@ async function confirmRefund() {
     if (!res.data?.success) throw new Error(res.data?.message || 'Refund failed')
 
     Swal.fire({
-      icon: 'success',
-      title: 'Refund issued',
+      icon: 'success', title: 'Refund issued',
       text: `Refund ID: ${res.data.refund_id || '—'}`,
-      timer: 1800,
-      showConfirmButton: false,
-      background: document.body.classList.contains('dark-mode') ? 'rgba(20,16,46,0.95)' : '#fff',
-      color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#1e293b'
+      timer: 1800, showConfirmButton: false
     })
     closeRefund()
     load()
@@ -682,9 +586,6 @@ async function confirmRefund() {
   }
 }
 
-// ============================================================
-// CSV EXPORT
-// ============================================================
 function exportCsv() {
   const cols = [
     'payment_ref', 'method', 'payment_method_type', 'supplier_name',
@@ -709,9 +610,6 @@ function exportCsv() {
   URL.revokeObjectURL(url)
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
 function formatMoney(v) {
   const n = Number(v || 0)
   return n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -733,23 +631,14 @@ function formatDateTime(v) {
 }
 function statusLabel(s) {
   return {
-    pending: 'Pending',
-    processing: 'Processing',
-    succeeded: 'Succeeded',
-    failed: 'Failed',
-    cancelled: 'Cancelled',
-    refunded: 'Refunded'
+    pending: 'Pending', processing: 'Processing', succeeded: 'Succeeded',
+    failed: 'Failed', cancelled: 'Cancelled', refunded: 'Refunded'
   }[s] || s || '—'
 }
 function methodLabel(m, sub) {
   const map = {
-    paymongo: 'PayMongo',
-    paymongo_checkout: 'Checkout',
-    paymongo_link: 'Link',
-    paymongo_intent: 'Intent',
-    bank_transfer: 'Bank',
-    cash: 'Cash',
-    cheque: 'Cheque'
+    paymongo: 'PayMongo', paymongo_checkout: 'Checkout', paymongo_link: 'Link',
+    paymongo_intent: 'Intent', bank_transfer: 'Bank', cash: 'Cash', cheque: 'Cheque'
   }
   const base = map[m] || m || '—'
   return sub ? `${base} · ${sub}` : base
@@ -778,583 +667,183 @@ onMounted(load)
 /* ============================================================
    PAGE
    ============================================================ */
-.pm-page {
-  padding: 1.5rem;
-  color: #1e293b;
-  font-size: 0.9rem;
-}
+.pm-page { padding: 1.5rem; color: #1e293b; font-size: 0.9rem; }
 body.dark-mode .pm-page { color: #e2e8f0; }
 
-.pm-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.pm-head h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+.pm-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; }
+.pm-head h1 { margin: 0; font-size: 1.5rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 0.5rem; }
 body.dark-mode .pm-head h1 { color: #f1f5f9; }
 .pm-head-icon { font-size: 1.3rem; }
-.pm-head-sub {
-  margin: 0.35rem 0 0;
-  font-size: 0.85rem;
-  color: #64748b;
-}
+.pm-head-sub { margin: 0.35rem 0 0; font-size: 0.85rem; color: #64748b; }
 body.dark-mode .pm-head-sub { color: #94a3b8; }
-.pm-head-right {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
+.pm-head-right { display: flex; gap: 0.5rem; align-items: center; }
 
-/* ============================================================
-   BUTTONS
-   ============================================================ */
-.pm-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 1rem;
-  border-radius: 10px;
-  font-weight: 500;
-  font-size: 0.82rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-  font-family: inherit;
-}
-.pm-btn-primary {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
-}
+/* BUTTONS */
+.pm-btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1rem; border-radius: 10px; font-weight: 500; font-size: 0.82rem; cursor: pointer; border: 1px solid transparent; transition: all 0.15s ease; font-family: inherit; }
+.pm-btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
 .pm-btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
-.pm-btn-danger {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: #fff;
-}
+.pm-btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
 .pm-btn-danger:hover:not(:disabled) { filter: brightness(1.1); }
-.pm-btn-ghost {
-  background: #ffffff;
-  color: #334155;
-  border-color: #e2e8f0;
-}
+.pm-btn-ghost { background: #ffffff; color: #334155; border-color: #e2e8f0; }
 .pm-btn-ghost:hover:not(:disabled) { background: #f8fafc; }
-body.dark-mode .pm-btn-ghost {
-  background: rgba(255, 255, 255, 0.06);
-  color: #e2e8f0;
-  border-color: rgba(167, 139, 250, 0.18);
-}
-body.dark-mode .pm-btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-}
+body.dark-mode .pm-btn-ghost { background: rgba(255, 255, 255, 0.06); color: #e2e8f0; border-color: rgba(167, 139, 250, 0.18); }
+body.dark-mode .pm-btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
 .pm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .spinning { display: inline-block; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg) } }
 
-/* ============================================================
-   STAT TILES
-   ============================================================ */
-.pm-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-}
-.pm-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-body.dark-mode .pm-tile {
-  background: rgba(26, 22, 48, 0.55);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border-color: rgba(167, 139, 250, 0.18);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(124, 58, 237, 0.08);
-}
-.pm-tile-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
-}
+/* STAT TILES */
+.pm-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+.pm-tile { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.9rem 1rem; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04); }
+body.dark-mode .pm-tile { background: rgba(26, 22, 48, 0.55); backdrop-filter: blur(20px) saturate(180%); border-color: rgba(167, 139, 250, 0.18); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(124, 58, 237, 0.08); }
+.pm-tile-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
 body.dark-mode .pm-tile-label { color: #94a3b8; }
-.pm-tile-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #0f172a;
-}
+.pm-tile-value { font-size: 1.25rem; font-weight: 700; color: #0f172a; }
 body.dark-mode .pm-tile-value { color: #f1f5f9; }
 .pm-tile-value.success { color: #16a34a; }
-.pm-tile-value.warn    { color: #d97706; }
-.pm-tile-value.danger  { color: #dc2626; }
-.pm-tile-value.info    { color: #2563eb; }
+.pm-tile-value.warn { color: #d97706; }
+.pm-tile-value.danger { color: #dc2626; }
+.pm-tile-value.info { color: #2563eb; }
 body.dark-mode .pm-tile-value.success { color: #22c55e; }
-body.dark-mode .pm-tile-value.warn    { color: #facc15; }
-body.dark-mode .pm-tile-value.danger  { color: #f87171; }
-body.dark-mode .pm-tile-value.info    { color: #60a5fa; }
-.pm-tile-sub {
-  font-size: 0.7rem;
-  color: #94a3b8;
-}
+body.dark-mode .pm-tile-value.warn { color: #facc15; }
+body.dark-mode .pm-tile-value.danger { color: #f87171; }
+body.dark-mode .pm-tile-value.info { color: #60a5fa; }
+.pm-tile-sub { font-size: 0.7rem; color: #94a3b8; }
 
-/* ============================================================
-   TOOLBAR
-   ============================================================ */
-.pm-toolbar {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-.pm-search {
-  position: relative;
-  flex: 1 1 240px;
-  min-width: 200px;
-}
-.pm-search input {
-  width: 100%;
-  padding: 0.6rem 0.8rem 0.6rem 2.2rem;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: #0f172a;
-  font-size: 0.85rem;
-  font-family: inherit;
-  outline: none;
-}
-.pm-search input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-body.dark-mode .pm-search input {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(167, 139, 250, 0.2);
-  color: #e2e8f0;
-}
-body.dark-mode .pm-search input:focus {
-  border-color: rgba(167, 139, 250, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
-}
-.pm-search-icon {
-  position: absolute;
-  top: 50%;
-  left: 0.7rem;
-  transform: translateY(-50%);
-  font-size: 0.85rem;
-  opacity: 0.5;
-}
-.pm-select {
-  padding: 0.55rem 0.75rem;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: #0f172a;
-  font-size: 0.82rem;
-  font-family: inherit;
-  outline: none;
-  cursor: pointer;
-}
-.pm-select:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-body.dark-mode .pm-select {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(167, 139, 250, 0.2);
-  color: #e2e8f0;
-}
-body.dark-mode .pm-select option {
-  background: #1a1630;
-  color: #e2e8f0;
-}
+/* TOOLBAR */
+.pm-toolbar { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+.pm-search { position: relative; flex: 1 1 240px; min-width: 200px; }
+.pm-search input { width: 100%; padding: 0.6rem 0.8rem 0.6rem 2.2rem; border-radius: 10px; background: #ffffff; border: 1px solid #e2e8f0; color: #0f172a; font-size: 0.85rem; font-family: inherit; outline: none; }
+.pm-search input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+body.dark-mode .pm-search input { background: rgba(255, 255, 255, 0.06); border-color: rgba(167, 139, 250, 0.2); color: #e2e8f0; }
+body.dark-mode .pm-search input:focus { border-color: rgba(167, 139, 250, 0.5); box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2); }
+.pm-search-icon { position: absolute; top: 50%; left: 0.7rem; transform: translateY(-50%); font-size: 0.85rem; opacity: 0.5; }
+.pm-select { padding: 0.55rem 0.75rem; border-radius: 10px; background: #ffffff; border: 1px solid #e2e8f0; color: #0f172a; font-size: 0.82rem; font-family: inherit; outline: none; cursor: pointer; }
+.pm-select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+body.dark-mode .pm-select { background: rgba(255, 255, 255, 0.06); border-color: rgba(167, 139, 250, 0.2); color: #e2e8f0; }
+body.dark-mode .pm-select option { background: #1a1630; color: #e2e8f0; }
 
-/* ============================================================
-   TABLE
-   ============================================================ */
-.pm-table-wrap {
-  border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-body.dark-mode .pm-table-wrap {
-  background: rgba(26, 22, 48, 0.55);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border-color: rgba(167, 139, 250, 0.18);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(124, 58, 237, 0.08);
-}
-.pm-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-}
+/* TABLE */
+.pm-table-wrap { border-radius: 16px; background: #ffffff; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04); }
+body.dark-mode .pm-table-wrap { background: rgba(26, 22, 48, 0.55); backdrop-filter: blur(20px) saturate(180%); border-color: rgba(167, 139, 250, 0.18); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(124, 58, 237, 0.08); }
+.pm-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 .pm-table thead { background: #f8fafc; }
 body.dark-mode .pm-table thead { background: rgba(255, 255, 255, 0.04); }
-.pm-table th {
-  text-align: left;
-  padding: 0.75rem 0.9rem;
-  font-weight: 600;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #475569;
-  white-space: nowrap;
-}
+.pm-table th { text-align: left; padding: 0.75rem 0.9rem; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: #475569; white-space: nowrap; }
 body.dark-mode .pm-table th { color: #94a3b8; }
 .pm-table th.num { text-align: right; }
 .pm-table th.center { text-align: center; }
-.pm-table td {
-  padding: 0.75rem 0.9rem;
-  border-top: 1px solid #f1f5f9;
-  color: #1e293b;
-  vertical-align: middle;
-}
-body.dark-mode .pm-table td {
-  border-top-color: rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
-}
+.pm-table td { padding: 0.75rem 0.9rem; border-top: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle; }
+body.dark-mode .pm-table td { border-top-color: rgba(255, 255, 255, 0.05); color: #e2e8f0; }
 .pm-table td.num { text-align: right; }
 .pm-table td.center { text-align: center; }
 .pm-table tbody tr:hover { background: #f8fafc; }
 body.dark-mode .pm-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
-
 .pm-sub { margin-top: 0.15rem; }
-
 .actions-cell { white-space: nowrap; }
 
-/* ============================================================
-   METHOD BADGES
-   ============================================================ */
-.pm-method {
-  display: inline-block;
-  padding: 0.2rem 0.55rem;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 500;
-  border: 1px solid transparent;
-}
+/* METHOD BADGES */
+.pm-method { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 6px; font-size: 0.7rem; font-weight: 500; border: 1px solid transparent; }
 .pm-method-checkout { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
-.pm-method-link     { background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
-.pm-method-source   { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
-.pm-method-bank     { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
-.pm-method-cash     { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-.pm-method-cheque   { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-.pm-method-default  { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+.pm-method-link { background: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
+.pm-method-source { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+.pm-method-bank { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+.pm-method-cash { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+.pm-method-cheque { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.pm-method-default { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
 body.dark-mode .pm-method-checkout { background: rgba(99,102,241,0.18); color: #a5b4fc; border-color: rgba(99,102,241,0.4); }
-body.dark-mode .pm-method-link     { background: rgba(139,92,246,0.18); color: #c4b5fd; border-color: rgba(139,92,246,0.4); }
-body.dark-mode .pm-method-source   { background: rgba(79,70,229,0.18); color: #a5b4fc; border-color: rgba(79,70,229,0.4); }
-body.dark-mode .pm-method-bank     { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.35); }
-body.dark-mode .pm-method-cash     { background: rgba(34,197,94,0.18); color: #86efac; border-color: rgba(34,197,94,0.4); }
-body.dark-mode .pm-method-cheque   { background: rgba(234,179,8,0.18); color: #fcd34d; border-color: rgba(234,179,8,0.4); }
-body.dark-mode .pm-method-default  { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.35); }
+body.dark-mode .pm-method-link { background: rgba(139,92,246,0.18); color: #c4b5fd; border-color: rgba(139,92,246,0.4); }
+body.dark-mode .pm-method-source { background: rgba(79,70,229,0.18); color: #a5b4fc; border-color: rgba(79,70,229,0.4); }
+body.dark-mode .pm-method-bank { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.35); }
+body.dark-mode .pm-method-cash { background: rgba(34,197,94,0.18); color: #86efac; border-color: rgba(34,197,94,0.4); }
+body.dark-mode .pm-method-cheque { background: rgba(234,179,8,0.18); color: #fcd34d; border-color: rgba(234,179,8,0.4); }
+body.dark-mode .pm-method-default { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.35); }
 
-/* ============================================================
-   ICON BUTTONS
-   ============================================================ */
-.pm-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  margin: 0 2px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #334155;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.12s ease;
-}
-.pm-icon-btn:hover:not(:disabled) {
-  background: #eef2ff;
-  border-color: #a5b4fc;
-}
+/* ICON BUTTONS */
+.pm-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: 0 2px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; cursor: pointer; font-size: 0.85rem; transition: all 0.12s ease; }
+.pm-icon-btn:hover:not(:disabled) { background: #eef2ff; border-color: #a5b4fc; }
 .pm-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .pm-icon-refund:hover { background: #fef2f2 !important; border-color: #fca5a5 !important; }
-.pm-icon-link:hover   { background: #f3e8ff !important; border-color: #d8b4fe !important; }
-.pm-icon-sync:hover   { background: #eef2ff !important; border-color: #a5b4fc !important; }
-body.dark-mode .pm-icon-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(167, 139, 250, 0.18);
-  color: #cbd5e1;
-}
-body.dark-mode .pm-icon-btn:hover:not(:disabled) {
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(167, 139, 250, 0.5);
-}
+.pm-icon-link:hover { background: #f3e8ff !important; border-color: #d8b4fe !important; }
+.pm-icon-sync:hover { background: #eef2ff !important; border-color: #a5b4fc !important; }
+body.dark-mode .pm-icon-btn { background: rgba(255, 255, 255, 0.06); border-color: rgba(167, 139, 250, 0.18); color: #cbd5e1; }
+body.dark-mode .pm-icon-btn:hover:not(:disabled) { background: rgba(124, 58, 237, 0.18); border-color: rgba(167, 139, 250, 0.5); }
 
-/* ============================================================
-   PILLS
-   ============================================================ */
-.pm-pill {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  border: 1px solid transparent;
-}
-.pm-pill-pending,
-.pm-pill-processing { background: #fef3c7; color: #b45309; border-color: #fde68a; }
-.pm-pill-succeeded  { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-.pm-pill-failed,
-.pm-pill-cancelled  { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
-.pm-pill-refunded   { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
-.pm-pill-neutral    { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+/* PILLS */
+.pm-pill { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; border: 1px solid transparent; }
+.pm-pill-pending, .pm-pill-processing { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+.pm-pill-succeeded { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+.pm-pill-failed, .pm-pill-cancelled { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+.pm-pill-refunded { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+.pm-pill-neutral { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+body.dark-mode .pm-pill-pending, body.dark-mode .pm-pill-processing { background: rgba(234,179,8,0.18); color: #fcd34d; border-color: rgba(234,179,8,0.4); }
+body.dark-mode .pm-pill-succeeded { background: rgba(34,197,94,0.18); color: #86efac; border-color: rgba(34,197,94,0.4); }
+body.dark-mode .pm-pill-failed, body.dark-mode .pm-pill-cancelled { background: rgba(239,68,68,0.18); color: #fca5a5; border-color: rgba(239,68,68,0.4); }
+body.dark-mode .pm-pill-refunded { background: rgba(99,102,241,0.18); color: #a5b4fc; border-color: rgba(99,102,241,0.4); }
+body.dark-mode .pm-pill-neutral { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.35); }
 
-body.dark-mode .pm-pill-pending,
-body.dark-mode .pm-pill-processing { background: rgba(234,179,8,0.18); color: #fcd34d; border-color: rgba(234,179,8,0.4); }
-body.dark-mode .pm-pill-succeeded  { background: rgba(34,197,94,0.18); color: #86efac; border-color: rgba(34,197,94,0.4); }
-body.dark-mode .pm-pill-failed,
-body.dark-mode .pm-pill-cancelled  { background: rgba(239,68,68,0.18); color: #fca5a5; border-color: rgba(239,68,68,0.4); }
-body.dark-mode .pm-pill-refunded   { background: rgba(99,102,241,0.18); color: #a5b4fc; border-color: rgba(99,102,241,0.4); }
-body.dark-mode .pm-pill-neutral    { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.35); }
-
-.pm-overdue {
-  display: inline-block;
-  margin-left: 0.4rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 6px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  background: #fee2e2;
-  color: #b91c1c;
-}
-body.dark-mode .pm-overdue {
-  background: rgba(239,68,68,0.18);
-  color: #fca5a5;
-}
-
-.pm-link {
-  color: #6366f1;
-  font-weight: 500;
-}
+.pm-overdue { display: inline-block; margin-left: 0.4rem; padding: 0.15rem 0.4rem; border-radius: 6px; font-size: 0.65rem; font-weight: 600; background: #fee2e2; color: #b91c1c; }
+body.dark-mode .pm-overdue { background: rgba(239,68,68,0.18); color: #fca5a5; }
+.pm-link { color: #6366f1; font-weight: 500; }
 body.dark-mode .pm-link { color: #a5b4fc; }
-
 .muted { color: #64748b; }
 body.dark-mode .muted { color: #94a3b8; }
 .small { font-size: 0.78rem; }
 .mono { font-family: ui-monospace, monospace; font-size: 0.75rem; }
 
-/* ============================================================
-   EMPTY / LOADING
-   ============================================================ */
-.pm-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
-  text-align: center;
-  color: #64748b;
-  gap: 1rem;
-}
+/* EMPTY / LOADING */
+.pm-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; text-align: center; color: #64748b; gap: 1rem; }
 .pm-empty.error { color: #dc2626; }
 body.dark-mode .pm-empty.error { color: #f87171; }
-.pm-spinner {
-  width: 40px; height: 40px;
-  border: 4px solid #e2e8f0;
-  border-top-color: #6366f1;
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-}
-body.dark-mode .pm-spinner {
-  border-color: rgba(255, 255, 255, 0.1);
-  border-top-color: #8b5cf6;
-}
+.pm-spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.9s linear infinite; }
+body.dark-mode .pm-spinner { border-color: rgba(255, 255, 255, 0.1); border-top-color: #8b5cf6; }
 
 /* ============================================================
-   DETAIL DRAWER
+   CENTERED MODAL
    ============================================================ */
-.pm-drawer-backdrop {
+.pm-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
   z-index: 9000;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
   animation: fade 0.15s ease;
 }
-body.dark-mode .pm-drawer-backdrop { background: rgba(0, 0, 0, 0.55); }
+body.dark-mode .pm-modal-backdrop { background: rgba(0, 0, 0, 0.65); }
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
 
-.pm-drawer {
-  width: 100%;
-  max-width: 480px;
-  height: 100%;
-  background: #ffffff;
-  border-left: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  animation: slideIn 0.22s ease;
-  color: #1e293b;
-  box-shadow: -10px 0 30px -10px rgba(15, 23, 42, 0.15);
-}
-body.dark-mode .pm-drawer {
-  background: rgba(20, 16, 46, 0.95);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  border-left-color: rgba(167, 139, 250, 0.22);
-  color: #e2e8f0;
-  box-shadow: -10px 0 40px -10px rgba(0, 0, 0, 0.6), 0 0 60px rgba(124, 58, 237, 0.2);
-}
-@keyframes slideIn { from { transform: translateX(20px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
-
-.pm-drawer-head {
-  padding: 1.1rem 1.25rem;
-  border-bottom: 1px solid #f1f5f9;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-body.dark-mode .pm-drawer-head { border-bottom-color: rgba(255, 255, 255, 0.06); }
-.pm-drawer-head h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #0f172a; }
-body.dark-mode .pm-drawer-head h2 { color: #f1f5f9; }
-.pm-drawer-head .muted { font-size: 0.8rem; margin: 0.25rem 0 0; }
-
-.pm-drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-.pm-drawer-section h3 {
-  margin: 0 0 0.6rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
-}
-body.dark-mode .pm-drawer-section h3 { color: #94a3b8; }
-
-.pm-drawer-amounts {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  margin-bottom: 0.9rem;
-}
-.pm-drawer-amounts > div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.7rem;
-  border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
-}
-body.dark-mode .pm-drawer-amounts > div {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.06);
-}
-.pm-drawer-amounts .muted { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.pm-drawer-amounts strong { font-size: 1.05rem; color: #0f172a; }
-body.dark-mode .pm-drawer-amounts strong { color: #f1f5f9; }
-.pm-drawer-amounts .success { color: #16a34a; }
-body.dark-mode .pm-drawer-amounts .success { color: #22c55e; }
-
-.pm-drawer-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
-}
-.pm-drawer-cta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
-.pm-meta {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.4rem 1rem;
-  font-size: 0.82rem;
-  margin: 0;
-}
-.pm-meta dt { color: #64748b; font-weight: 500; }
-body.dark-mode .pm-meta dt { color: #94a3b8; }
-.pm-meta dd { margin: 0; color: #1e293b; }
-body.dark-mode .pm-meta dd { color: #e2e8f0; }
-
-.pm-notes {
-  white-space: pre-wrap;
-  font-style: italic;
-  color: #475569 !important;
-}
-body.dark-mode .pm-notes { color: #cbd5e1 !important; }
-.pm-error-text { color: #dc2626; }
-body.dark-mode .pm-error-text { color: #f87171; }
-
-.pm-summary {
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: #6366f1;
-  user-select: none;
-  margin-bottom: 0.4rem;
-}
-body.dark-mode .pm-summary { color: #a5b4fc; }
-
-.pm-payload {
-  margin: 0;
-  padding: 0.8rem;
-  border-radius: 10px;
-  background: #f8fafc;
-  color: #475569;
-  font-size: 0.72rem;
-  font-family: ui-monospace, monospace;
-  max-height: 300px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-  border: 1px solid #e2e8f0;
-}
-body.dark-mode .pm-payload {
-  background: rgba(0, 0, 0, 0.3);
-  color: #a5b4fc;
-  border-color: rgba(255, 255, 255, 0.06);
-}
-
-/* ============================================================
-   REFUND MODAL
-   ============================================================ */
 .pm-modal {
   width: 100%;
   max-width: 460px;
-  margin: auto;
+  max-height: 88vh;
   background: #ffffff;
   border-radius: 18px;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.25);
   border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   color: #1e293b;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.25);
+  animation: modalPop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
 }
+.pm-modal-lg { max-width: 560px; }
+
 body.dark-mode .pm-modal {
-  background: rgba(20, 16, 46, 0.95);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  background: rgba(20, 16, 46, 0.98);
   backdrop-filter: blur(30px) saturate(180%);
   border-color: rgba(167, 139, 250, 0.22);
   color: #e2e8f0;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 60px rgba(124, 58, 237, 0.25);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
 
 .pm-modal-head {
@@ -1362,88 +851,22 @@ body.dark-mode .pm-modal {
   border-bottom: 1px solid #f1f5f9;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  flex-shrink: 0;
 }
 body.dark-mode .pm-modal-head { border-bottom-color: rgba(255, 255, 255, 0.06); }
+.pm-modal-head h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #0f172a; }
+body.dark-mode .pm-modal-head h2 { color: #f1f5f9; }
 .pm-modal-head h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.pm-modal-head .muted { font-size: 0.8rem; margin: 0.25rem 0 0; }
 
 .pm-modal-body {
+  flex: 1;
+  overflow-y: auto;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.pm-refund-summary {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-}
-.pm-refund-summary > div {
-  padding: 0.6rem;
-  border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-body.dark-mode .pm-refund-summary > div {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.06);
-}
-.pm-refund-summary .muted { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.pm-refund-summary strong { font-size: 0.95rem; }
-.pm-refund-summary .success { color: #16a34a; }
-body.dark-mode .pm-refund-summary .success { color: #22c55e; }
-
-.pm-field { display: flex; flex-direction: column; gap: 0.35rem; }
-.pm-field > span {
-  font-size: 0.8rem;
-  color: #64748b;
-  font-weight: 500;
-}
-body.dark-mode .pm-field > span { color: #94a3b8; }
-.pm-field input,
-.pm-field textarea {
-  padding: 0.6rem 0.75rem;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: #0f172a;
-  font-size: 0.85rem;
-  font-family: inherit;
-  outline: none;
-}
-.pm-field input:focus,
-.pm-field textarea:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-body.dark-mode .pm-field input,
-body.dark-mode .pm-field textarea {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(167, 139, 250, 0.2);
-  color: #e2e8f0;
-}
-body.dark-mode .pm-field input:focus,
-body.dark-mode .pm-field textarea:focus {
-  border-color: rgba(167, 139, 250, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
-}
-
-.pm-modal-error {
-  padding: 0.6rem 0.8rem;
-  border-radius: 10px;
-  background: #fef2f2;
-  color: #b91c1c;
-  font-size: 0.8rem;
-  border: 1px solid #fecaca;
-}
-body.dark-mode .pm-modal-error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.3);
+  gap: 1.25rem;
 }
 
 .pm-modal-foot {
@@ -1452,6 +875,59 @@ body.dark-mode .pm-modal-error {
   display: flex;
   justify-content: flex-end;
   gap: 0.6rem;
+  flex-shrink: 0;
 }
 body.dark-mode .pm-modal-foot { border-top-color: rgba(255, 255, 255, 0.06); }
+
+/* Detail sections */
+.pm-drawer-section h3 { margin: 0 0 0.6rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+body.dark-mode .pm-drawer-section h3 { color: #94a3b8; }
+
+.pm-drawer-amounts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 0.9rem; }
+.pm-drawer-amounts > div { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.7rem; border-radius: 10px; background: #f8fafc; border: 1px solid #f1f5f9; }
+body.dark-mode .pm-drawer-amounts > div { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.06); }
+.pm-drawer-amounts .muted { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.pm-drawer-amounts strong { font-size: 1.05rem; color: #0f172a; }
+body.dark-mode .pm-drawer-amounts strong { color: #f1f5f9; }
+.pm-drawer-amounts .success { color: #16a34a; }
+body.dark-mode .pm-drawer-amounts .success { color: #22c55e; }
+
+.pm-drawer-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.9rem; }
+.pm-drawer-cta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.pm-meta { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 1rem; font-size: 0.82rem; margin: 0; }
+.pm-meta dt { color: #64748b; font-weight: 500; }
+body.dark-mode .pm-meta dt { color: #94a3b8; }
+.pm-meta dd { margin: 0; color: #1e293b; }
+body.dark-mode .pm-meta dd { color: #e2e8f0; }
+
+.pm-notes { white-space: pre-wrap; font-style: italic; color: #475569 !important; }
+body.dark-mode .pm-notes { color: #cbd5e1 !important; }
+.pm-error-text { color: #dc2626; }
+body.dark-mode .pm-error-text { color: #f87171; }
+
+.pm-summary { cursor: pointer; font-size: 0.8rem; color: #6366f1; user-select: none; margin-bottom: 0.4rem; }
+body.dark-mode .pm-summary { color: #a5b4fc; }
+.pm-payload { margin: 0; padding: 0.8rem; border-radius: 10px; background: #f8fafc; color: #475569; font-size: 0.72rem; font-family: ui-monospace, monospace; max-height: 300px; overflow: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid #e2e8f0; }
+body.dark-mode .pm-payload { background: rgba(0, 0, 0, 0.3); color: #a5b4fc; border-color: rgba(255, 255, 255, 0.06); }
+
+/* Refund modal */
+.pm-refund-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+.pm-refund-summary > div { padding: 0.6rem; border-radius: 10px; background: #f8fafc; border: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 0.15rem; }
+body.dark-mode .pm-refund-summary > div { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.06); }
+.pm-refund-summary .muted { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.pm-refund-summary strong { font-size: 0.95rem; }
+.pm-refund-summary .success { color: #16a34a; }
+body.dark-mode .pm-refund-summary .success { color: #22c55e; }
+
+.pm-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.pm-field > span { font-size: 0.8rem; color: #64748b; font-weight: 500; }
+body.dark-mode .pm-field > span { color: #94a3b8; }
+.pm-field input, .pm-field textarea { padding: 0.6rem 0.75rem; border-radius: 10px; background: #ffffff; border: 1px solid #e2e8f0; color: #0f172a; font-size: 0.85rem; font-family: inherit; outline: none; }
+.pm-field input:focus, .pm-field textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+body.dark-mode .pm-field input, body.dark-mode .pm-field textarea { background: rgba(255, 255, 255, 0.06); border-color: rgba(167, 139, 250, 0.2); color: #e2e8f0; }
+body.dark-mode .pm-field input:focus, body.dark-mode .pm-field textarea:focus { border-color: rgba(167, 139, 250, 0.5); box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2); }
+
+.pm-modal-error { padding: 0.6rem 0.8rem; border-radius: 10px; background: #fef2f2; color: #b91c1c; font-size: 0.8rem; border: 1px solid #fecaca; }
+body.dark-mode .pm-modal-error { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
 </style>
