@@ -95,7 +95,7 @@
                       <button @click="editProduct(product)" class="btn-edit" title="Edit Product"><i class="fas fa-edit"></i></button>
                       <button v-if="product.status !== 'archived'" @click="archiveProduct(product.id)" class="btn-archive" title="Archive Product"><i class="fas fa-archive"></i></button>
                       <button v-else @click="restoreProduct(product.id)" class="btn-restore" title="Restore Product"><i class="fas fa-undo"></i></button>
-                      <button @click="deleteProductPermanent(product.id)" class="btn-delete" title="Delete Permanently"><i class="fas fa-trash"></i></button>
+                      <button @click="deleteProductPermanent(product)" class="btn-delete" title="Delete Permanently"><i class="fas fa-trash"></i></button>
                     </div>
                   </td>
                 </tr>
@@ -657,23 +657,64 @@ const restoreProduct = async (id) => {
   }
 };
 
-const deleteProductPermanent = async (id) => {
+// ============================================
+// DELETE — with archive-aware response handling
+// ============================================
+const deleteProductPermanent = async (product) => {
   const result = await Swal.fire({
-    title: 'Delete Permanently?',
-    html: `<p style="color: #ef4444; font-weight: 600;">⚠️ This action cannot be undone!</p>`,
-    icon: 'warning', showCancelButton: true,
-    confirmButtonColor: '#EF4444', cancelButtonColor: '#6B7280',
-    confirmButtonText: 'Yes, Delete', cancelButtonText: 'Cancel'
+    title: 'Delete Product?',
+    html: `
+      <p style="color: #ef4444; font-weight: 600;">⚠️ This action cannot be undone!</p>
+      <p style="font-size: .85rem; margin-top: .5rem; color: #6b7280;">
+        If <strong>${product.name}</strong> has active requests or linked records,
+        it will be <strong>archived</strong> instead of deleted.
+      </p>
+    `,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#EF4444',
+    cancelButtonColor: '#6B7280',
+    confirmButtonText: 'Yes, Delete',
+    cancelButtonText: 'Cancel'
   });
-  if (result.isConfirmed) {
-    try {
-      await api.delete(`/products.php?id=${id}`);
-      await loadProducts();
-      await Swal.fire({ icon: 'success', title: 'Deleted', text: 'Product deleted.', confirmButtonColor: '#4F46E5', timer: 1500, showConfirmButton: false });
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      await Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to delete product.', confirmButtonColor: '#4F46E5' });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    const response = await api.delete(`/products.php?id=${product.id}`);
+    await loadProducts();
+
+    if (response.data?.archived) {
+      // Soft-deleted: shows info toast with the reason
+      await Swal.fire({
+        icon: 'info',
+        title: 'Archived, Not Deleted',
+        html: `
+          <p>${response.data.message}</p>
+          <p style="font-size: .8rem; color: #6b7280; margin-top: .5rem;">
+            The product is now hidden from active views but preserved for historical records.
+          </p>
+        `,
+        confirmButtonColor: '#4F46E5'
+      });
+    } else {
+      // Hard-deleted
+      await Swal.fire({
+        icon: 'success',
+        title: 'Deleted',
+        text: response.data?.message || 'Product deleted permanently.',
+        timer: 1500,
+        showConfirmButton: false
+      });
     }
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: error.response?.data?.message || 'Failed to delete product.',
+      confirmButtonColor: '#4F46E5'
+    });
   }
 };
 
@@ -686,7 +727,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Keep your existing styles unchanged — same as the version in conversation history */
 .app-layout { display: flex; min-height: 100vh; }
 .main-content { flex: 1; display: flex; flex-direction: column; }
 .page-content { padding: 0; background: #f1f5f9; flex: 1; }
