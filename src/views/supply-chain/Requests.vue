@@ -1,6 +1,5 @@
 <template>
   <div class="requests-container">
-    <!-- Header -->
     <div class="requests-header">
       <div>
         <h2><i class="fas fa-hand-holding-usd"></i> Supply Chain Requests</h2>
@@ -16,7 +15,6 @@
       </div>
     </div>
 
-    <!-- Workflow Status -->
     <div class="workflow-status">
       <div class="workflow-step" v-for="step in workflowSteps" :key="step.key">
         <div class="step-icon" :class="{ active: step.active, completed: step.completed }">
@@ -27,7 +25,6 @@
       </div>
     </div>
 
-    <!-- Stats -->
     <div class="stats-row">
       <div class="stat-item">
         <span>Total Requests</span>
@@ -47,7 +44,6 @@
       </div>
     </div>
 
-    <!-- Filters -->
     <div class="filters-row">
       <div class="search-box">
         <i class="fas fa-search"></i>
@@ -56,15 +52,15 @@
       <select v-model="statusFilter" class="filter-select">
         <option value="">All Status</option>
         <option value="pending">Pending</option>
-        <option value="budget_check">Budget Check</option>
         <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
         <option value="ordered">Ordered</option>
+        <option value="unavailable">Unavailable</option>
         <option value="received">Received</option>
-        <option value="cancelled">Cancelled</option>
+        <option value="paid">Paid</option>
       </select>
     </div>
 
-    <!-- Requests Table -->
     <div class="table-wrapper">
       <table class="requests-table">
         <thead>
@@ -101,24 +97,30 @@
                 <button @click="viewRequest(request)" class="btn-view" title="View Details">
                   <i class="fas fa-eye"></i>
                 </button>
-                <button v-if="request.status === 'pending' && isFinance"
-                        @click="approveBudget(request.id)"
-                        class="btn-approve"
-                        title="Approve Budget">
-                  <i class="fas fa-check"></i>
-                </button>
-                <button v-if="request.status === 'approved' && isSupplyChain"
-                        @click="processOrder(request.id)"
-                        class="btn-order"
-                        title="Process Order">
-                  <i class="fas fa-truck"></i>
-                </button>
-                <button v-if="request.status === 'ordered' && isSupplyChain"
-                        @click="receiveOrder(request.id)"
-                        class="btn-receive"
-                        title="Receive Order">
-                  <i class="fas fa-box"></i>
-                </button>
+
+                <template v-if="canApprove && request.status === 'pending'">
+                  <button @click="approveBudget(request.id)" class="btn-approve" title="Approve Budget">
+                    <i class="fas fa-check"></i> Approve
+                  </button>
+                  <button @click="rejectRequest(request.id)" class="btn-reject" title="Reject">
+                    <i class="fas fa-times"></i> Reject
+                  </button>
+                </template>
+
+                <template v-if="canOrder && request.status === 'approved'">
+                  <button @click="openOrderModal(request)" class="btn-order" title="Place Order">
+                    <i class="fas fa-truck"></i> Order
+                  </button>
+                  <button @click="markUnavailable(request.id)" class="btn-unavailable" title="Mark Unavailable">
+                    <i class="fas fa-exclamation-triangle"></i> N/A
+                  </button>
+                </template>
+
+                <template v-if="canOrder && request.status === 'ordered'">
+                  <button @click="receiveOrder(request.id)" class="btn-receive" title="Receive Order">
+                    <i class="fas fa-box"></i> Receive
+                  </button>
+                </template>
               </div>
             </td>
           </tr>
@@ -130,7 +132,6 @@
       <span>Showing <strong>{{ filteredRequests.length }}</strong> requests</span>
     </div>
 
-    <!-- New Request Modal -->
     <div v-if="showNewRequest" class="modal-overlay" @click.self="showNewRequest = false">
       <div class="modal-content">
         <div class="modal-header">
@@ -157,7 +158,7 @@
           </div>
           <div class="info-box">
             <i class="fas fa-info-circle"></i>
-            Flow: Inventory Check → Finance Check → Supplier Check → Order → Receive
+            Flow: Inventory Check → Finance Check → Supplier Check → Order → Receive → Paid
           </div>
         </div>
         <div class="modal-footer">
@@ -169,7 +170,43 @@
       </div>
     </div>
 
-    <!-- Request Details Modal -->
+    <div v-if="showOrderModal" class="modal-overlay" @click.self="!orderingLoading && (showOrderModal = false)">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5><i class="fas fa-truck"></i> Place Order with Supplier</h5>
+          <button @click="showOrderModal = false" class="btn-close" :disabled="orderingLoading">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="order-summary">
+            <div class="order-row"><span>Product</span><strong>{{ orderRequest?.product_name }}</strong></div>
+            <div class="order-row"><span>Quantity</span><strong>{{ orderRequest?.quantity }}</strong></div>
+            <div class="order-row"><span>Est. Cost</span><strong>₱{{ formatPrice(orderRequest?.total_cost) }}</strong></div>
+          </div>
+
+          <div class="form-group">
+            <label>Select Supplier <span class="required">*</span></label>
+            <select v-model="selectedSupplier" class="form-control">
+              <option value="">-- Choose Supplier --</option>
+              <option v-for="s in suppliers" :key="s.id" :value="s.id">
+                {{ s.name }} — ₱{{ formatPrice(s.price_per_unit) }}/unit ({{ s.lead_time_days }}d)
+              </option>
+            </select>
+          </div>
+
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            Placing the order will notify Finance. Request moves to <strong>Ordered</strong>.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="showOrderModal = false" class="btn btn-secondary" :disabled="orderingLoading">Cancel</button>
+          <button @click="submitOrder" class="btn btn-primary" :disabled="orderingLoading || !selectedSupplier">
+            {{ orderingLoading ? 'Placing…' : 'Confirm Order' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showDetails" class="modal-overlay" @click.self="showDetails = false">
       <div class="modal-content details-modal">
         <div class="modal-header">
@@ -207,16 +244,18 @@ import Swal from 'sweetalert2'
 
 const authStore = useAuthStore()
 
-// ============================================
-// STATE
-// ============================================
-const loading        = ref(false)
-const submitting     = ref(false)
-const searchQuery    = ref('')
-const statusFilter   = ref('')
-const showNewRequest = ref(false)
-const showDetails    = ref(false)
+const loading         = ref(false)
+const submitting      = ref(false)
+const orderingLoading = ref(false)
+const searchQuery     = ref('')
+const statusFilter    = ref('')
+const showNewRequest  = ref(false)
+const showOrderModal  = ref(false)
+const showDetails     = ref(false)
 const selectedRequest = ref(null)
+const orderRequest    = ref(null)
+const selectedSupplier = ref('')
+const suppliers       = ref([])
 
 const requests = ref([])
 const products = ref([])
@@ -227,14 +266,18 @@ const newRequest = ref({
   notes: ''
 })
 
-// ============================================
-// COMPUTED
-// ============================================
 const isFinance     = computed(() => authStore.isFinance)
 const isSupplyChain = computed(() => authStore.isSupplyChain)
 
+const canApprove = computed(() =>
+  authStore.hasAnyRole(['finance', 'admin', 'super_admin'])
+)
+const canOrder = computed(() =>
+  authStore.hasAnyRole(['supply_chain', 'admin', 'super_admin'])
+)
+
 const pendingCount = computed(() =>
-  requests.value.filter(r => r.status === 'pending' || r.status === 'budget_check').length
+  requests.value.filter(r => r.status === 'pending').length
 )
 
 const approvedCount = computed(() =>
@@ -242,7 +285,7 @@ const approvedCount = computed(() =>
 )
 
 const completedCount = computed(() =>
-  requests.value.filter(r => r.status === 'received').length
+  requests.value.filter(r => r.status === 'received' || r.status === 'paid').length
 )
 
 const filteredRequests = computed(() => {
@@ -260,18 +303,23 @@ const filteredRequests = computed(() => {
 
 const workflowSteps = computed(() => {
   const steps = [
-    { key: 'inventory', label: 'Inventory Check', icon: 'fas fa-boxes', active: false, completed: false },
-    { key: 'finance',   label: 'Finance Check',   icon: 'fas fa-coins', active: false, completed: false },
-    { key: 'supplier',  label: 'Supplier Check',  icon: 'fas fa-building', active: false, completed: false },
-    { key: 'order',     label: 'Order Process',   icon: 'fas fa-truck', active: false, completed: false },
-    { key: 'complete',  label: 'Complete',        icon: 'fas fa-check-circle', active: false, completed: false, last: true }
+    { key: 'inventory', label: 'Inventory Check', icon: 'fas fa-boxes',          active: false, completed: false },
+    { key: 'finance',   label: 'Finance Check',   icon: 'fas fa-coins',          active: false, completed: false },
+    { key: 'supplier',  label: 'Supplier Check',  icon: 'fas fa-building',       active: false, completed: false },
+    { key: 'order',     label: 'Order Process',   icon: 'fas fa-truck',          active: false, completed: false },
+    { key: 'complete',  label: 'Complete',        icon: 'fas fa-check-circle',   active: false, completed: false, last: true }
   ]
   if (requests.value.length === 0) return steps
   const latest = requests.value[0]
   if (!latest) return steps
   const map = {
-    'pending': 0, 'budget_check': 1, 'approved': 2,
-    'ordered': 3, 'received': 4, 'cancelled': -1
+    'pending':     0,
+    'approved':    1,
+    'ordered':     3,
+    'unavailable': 2,
+    'received':    4,
+    'paid':        4,
+    'rejected':    -1
   }
   const currentStep = map[latest.status] ?? 0
   steps.forEach((step, i) => {
@@ -281,28 +329,27 @@ const workflowSteps = computed(() => {
   return steps
 })
 
-// ============================================
-// METHODS
-// ============================================
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'
 const formatPrice = (v) => Number(v || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
 const getStatusClass = (s) => ({
-  'pending': 'status-pending',
-  'budget_check': 'status-pending',
-  'approved': 'status-ordered',
-  'ordered': 'status-ordered',
-  'received': 'status-completed',
-  'cancelled': 'status-cancelled'
+  'pending':     'status-pending',
+  'approved':    'status-approved',
+  'rejected':    'status-rejected',
+  'ordered':     'status-ordered',
+  'unavailable': 'status-unavailable',
+  'received':    'status-completed',
+  'paid':        'status-paid'
 }[s] || 'status-pending')
 
 const getStatusLabel = (s) => ({
-  'pending': 'Pending',
-  'budget_check': 'Budget Check',
-  'approved': 'Approved',
-  'ordered': 'Ordered',
-  'received': 'Received',
-  'cancelled': 'Cancelled'
+  'pending':     'Pending',
+  'approved':    'Approved',
+  'rejected':    'Rejected',
+  'ordered':     'Ordered',
+  'unavailable': 'Unavailable',
+  'received':    'Received',
+  'paid':        'Paid'
 }[s] || s || 'Pending')
 
 const loadRequests = async () => {
@@ -337,6 +384,17 @@ const loadProducts = async () => {
   } catch (error) {
     console.error('Error loading products:', error)
     products.value = []
+  }
+}
+
+const loadSuppliers = async () => {
+  if (suppliers.value.length) return
+  try {
+    const response = await api.get('/suppliers.php?status=active')
+    suppliers.value = response.data?.data || []
+  } catch (error) {
+    console.error('Error loading suppliers:', error)
+    suppliers.value = []
   }
 }
 
@@ -405,6 +463,27 @@ const viewRequest = (r) => {
   showDetails.value = true
 }
 
+const updateStatus = async (id, status, extra = {}) => {
+  try {
+    const response = await api.put(`/supply_chain.php?id=${id}`, {
+      status,
+      approved_by: authStore.user?.id || 1,
+      ...extra
+    })
+    if (response.data.success) {
+      await loadRequests()
+      return true
+    }
+  } catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Failed',
+      text: error.response?.data?.message || 'Update failed'
+    })
+  }
+  return false
+}
+
 const approveBudget = async (id) => {
   const result = await Swal.fire({
     title: 'Approve Budget?',
@@ -416,41 +495,69 @@ const approveBudget = async (id) => {
     confirmButtonText: 'Yes, Approve'
   })
   if (!result.isConfirmed) return
-
-  try {
-    const response = await api.put(`/supply_chain.php?id=${id}`, {
-      status: 'approved',
-      approved_by: authStore.user?.id || 1
-    })
-    if (response.data.success) {
-      await Swal.fire({ icon: 'success', title: 'Approved!', timer: 1200, showConfirmButton: false })
-      await loadRequests()
-    }
-  } catch (error) {
-    Swal.fire({ icon: 'error', title: 'Failed', text: error.response?.data?.message || 'Approve failed' })
+  const ok = await updateStatus(id, 'approved')
+  if (ok) {
+    Swal.fire({ icon: 'success', title: 'Approved!', timer: 1200, showConfirmButton: false })
   }
 }
 
-const processOrder = async (id) => {
-  const result = await Swal.fire({
-    title: 'Process Order?',
-    text: 'Place order with supplier?',
-    icon: 'question',
+const rejectRequest = async (id) => {
+  const { value: reason } = await Swal.fire({
+    title: 'Reject Request',
+    input: 'textarea',
+    inputLabel: 'Reason (optional)',
+    inputPlaceholder: 'Why is this being rejected?',
     showCancelButton: true,
-    confirmButtonColor: '#8B5CF6',
+    confirmButtonColor: '#EF4444',
     cancelButtonColor: '#6B7280',
-    confirmButtonText: 'Yes, Process'
+    confirmButtonText: 'Yes, Reject'
+  })
+  if (reason === undefined) return
+  const ok = await updateStatus(id, 'rejected', { notes: reason || '' })
+  if (ok) {
+    Swal.fire({ icon: 'success', title: 'Rejected', timer: 1200, showConfirmButton: false })
+  }
+}
+
+const openOrderModal = async (request) => {
+  orderRequest.value = request
+  selectedSupplier.value = request.supplier_id || ''
+  showOrderModal.value = true
+  await loadSuppliers()
+}
+
+const submitOrder = async () => {
+  if (!selectedSupplier.value) {
+    return Swal.fire({ icon: 'warning', title: 'Select a supplier', confirmButtonColor: '#4F46E5' })
+  }
+  orderingLoading.value = true
+  try {
+    const ok = await updateStatus(orderRequest.value.id, 'ordered', {
+      supplier_id: selectedSupplier.value
+    })
+    if (ok) {
+      showOrderModal.value = false
+      Swal.fire({ icon: 'success', title: 'Order Placed!', timer: 1200, showConfirmButton: false })
+    }
+  } finally {
+    orderingLoading.value = false
+  }
+}
+
+const markUnavailable = async (id) => {
+  const result = await Swal.fire({
+    title: 'Mark as Unavailable?',
+    text: 'Supplier has no stock for this product.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#F59E0B',
+    cancelButtonColor: '#6B7280',
+    confirmButtonText: 'Yes, Mark'
   })
   if (!result.isConfirmed) return
-
-  try {
-    const response = await api.put(`/supply_chain.php?id=${id}`, { status: 'ordered' })
-    if (response.data.success) {
-      await Swal.fire({ icon: 'success', title: 'Order Placed!', timer: 1200, showConfirmButton: false })
-      await loadRequests()
-    }
-  } catch (error) {
-    Swal.fire({ icon: 'error', title: 'Failed', text: error.response?.data?.message || 'Failed' })
+  const ok = await updateStatus(id, 'unavailable', { notes: 'Supplier has no stock' })
+  if (ok) {
+    Swal.fire({ icon: 'success', title: 'Marked Unavailable', timer: 1200, showConfirmButton: false })
   }
 }
 
@@ -465,15 +572,9 @@ const receiveOrder = async (id) => {
     confirmButtonText: 'Yes, Receive'
   })
   if (!result.isConfirmed) return
-
-  try {
-    const response = await api.put(`/supply_chain.php?id=${id}`, { status: 'received' })
-    if (response.data.success) {
-      await Swal.fire({ icon: 'success', title: 'Received!', timer: 1200, showConfirmButton: false })
-      await loadRequests()
-    }
-  } catch (error) {
-    Swal.fire({ icon: 'error', title: 'Failed', text: error.response?.data?.message || 'Failed' })
+  const ok = await updateStatus(id, 'received')
+  if (ok) {
+    Swal.fire({ icon: 'success', title: 'Received!', timer: 1200, showConfirmButton: false })
   }
 }
 
@@ -521,16 +622,26 @@ onMounted(refreshData)
 .text-center { text-align: center; padding: 1.5rem; color: #6b7280; }
 
 .status-pending { background: #fef3c7; color: #92400e; padding: .15rem .5rem; border-radius: 50px; font-size: .7rem; font-weight: 600; display: inline-block; }
+.status-approved { background: #dbeafe; color: #1e40af; padding: .15rem .5rem; border-radius: 50px; font-size: .7rem; font-weight: 600; display: inline-block; }
+.status-rejected { background: #fee2e2; color: #991b1b; padding: .15rem .5rem; border-radius: 50px; font-size: .7rem; font-weight: 600; display: inline-block; }
 .status-ordered { background: #e0e7ff; color: #3730a3; padding: .15rem .5rem; border-radius: 50px; font-size: .7rem; font-weight: 600; display: inline-block; }
+.status-unavailable { background: #fef3c7; color: #b45309; padding: .15rem .5rem; border-radius: 50px; font-size: .7rem; font-weight: 600; display: inline-block; }
 .status-completed { background: #d1fae5; color: #065f46; padding: .15rem .5rem; border-radius: 50px; font-size: .7rem; font-weight: 600; display: inline-block; }
-.status-cancelled { background: #fee2e2; color: #991b1b; padding: .15rem .5rem; border-radius: 50px; font-size: .7rem; font-weight: 600; display: inline-block; }
+.status-paid { background: #dcfce7; color: #166534; padding: .15rem .5rem; border-radius: 50px; font-size: .7rem; font-weight: 700; display: inline-block; }
 
 .action-buttons { display: flex; gap: .25rem; flex-wrap: wrap; }
 .btn-view { background: none; border: none; color: #4F46E5; cursor: pointer; padding: .2rem .4rem; border-radius: 4px; }
 .btn-view:hover { background: #e0e7ff; }
-.btn-approve { background: #10B981; color: #fff; border: none; padding: .2rem .5rem; border-radius: 4px; cursor: pointer; font-size: .7rem; }
-.btn-order { background: #8B5CF6; color: #fff; border: none; padding: .2rem .5rem; border-radius: 4px; cursor: pointer; font-size: .7rem; }
-.btn-receive { background: #10B981; color: #fff; border: none; padding: .2rem .5rem; border-radius: 4px; cursor: pointer; font-size: .7rem; }
+.btn-approve { background: #10B981; color: #fff; border: none; padding: .25rem .55rem; border-radius: 4px; cursor: pointer; font-size: .7rem; display: inline-flex; align-items: center; gap: .2rem; }
+.btn-approve:hover { background: #059669; }
+.btn-reject { background: #EF4444; color: #fff; border: none; padding: .25rem .55rem; border-radius: 4px; cursor: pointer; font-size: .7rem; display: inline-flex; align-items: center; gap: .2rem; }
+.btn-reject:hover { background: #DC2626; }
+.btn-order { background: #2563EB; color: #fff; border: none; padding: .25rem .55rem; border-radius: 4px; cursor: pointer; font-size: .7rem; display: inline-flex; align-items: center; gap: .2rem; }
+.btn-order:hover { background: #1D4ED8; }
+.btn-unavailable { background: #F59E0B; color: #fff; border: none; padding: .25rem .55rem; border-radius: 4px; cursor: pointer; font-size: .7rem; display: inline-flex; align-items: center; gap: .2rem; }
+.btn-unavailable:hover { background: #D97706; }
+.btn-receive { background: #10B981; color: #fff; border: none; padding: .25rem .55rem; border-radius: 4px; cursor: pointer; font-size: .7rem; display: inline-flex; align-items: center; gap: .2rem; }
+.btn-receive:hover { background: #059669; }
 
 .requests-footer { margin-top: 1rem; padding: .5rem 1rem; background: #fff; border-radius: 8px; text-align: center; font-size: .85rem; color: #6b7280; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
 
@@ -554,6 +665,10 @@ onMounted(refreshData)
 .detail-row { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid #f3f4f6; }
 .detail-row label { font-weight: 600; color: #6b7280; font-size: .85rem; }
 .detail-row span { color: #1f2937; font-size: .85rem; }
+
+.order-summary { display: flex; flex-direction: column; gap: .4rem; background: #f9fafb; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; }
+.order-row { display: flex; justify-content: space-between; font-size: .9rem; }
+.order-row span { color: #6b7280; }
 
 @media (max-width: 768px) {
   .requests-container { padding: 1rem; }
