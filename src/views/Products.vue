@@ -188,7 +188,7 @@
     </div>
   </div>
 
-  <!-- Approvals Modal -->
+  <!-- Approvals Modal (Finance Only) -->
   <div v-if="showApprovalsModal" class="modal-overlay" @click.self="closeApprovalsModal">
     <div class="modal-content approvals-modal">
       <div class="modal-header">
@@ -478,7 +478,6 @@ const submitRequest = async () => {
     formData.append('notes', requestForm.value.reason || '');
     formData.append('priority', requestForm.value.priority);
 
-    // ✅ Only send category_id when it's a real value
     if (requestForm.value.category_id) {
       formData.append('category_id', requestForm.value.category_id);
     }
@@ -544,7 +543,6 @@ const saveEditProduct = async () => {
     formData.append('description', editForm.value.description || '');
     formData.append('price', parseFloat(editForm.value.price));
 
-    // ✅ Only send category_id when it's a real value
     if (editForm.value.category_id) {
       formData.append('category_id', editForm.value.category_id);
     }
@@ -688,7 +686,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* ─── Keep all your existing styles ─── */
+/* Keep your existing styles unchanged — same as the version in conversation history */
 .app-layout { display: flex; min-height: 100vh; }
 .main-content { flex: 1; display: flex; flex-direction: column; }
 .page-content { padding: 0; background: #f1f5f9; flex: 1; }
