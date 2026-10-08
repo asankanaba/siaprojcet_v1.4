@@ -143,11 +143,14 @@
             <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
           </select>
         </div>
+
         <div class="form-group">
           <label>Product Image</label>
+
+          <!-- Primary: upload a file -->
           <div class="image-upload" @click="$refs.requestFileInput.click()">
             <input type="file" ref="requestFileInput" @change="handleRequestImageUpload" accept="image/*" style="display: none;" />
-            <div v-if="requestForm.imagePreview" class="image-preview">
+            <div v-if="requestForm.imagePreview && requestForm.imageFile" class="image-preview">
               <img :src="requestForm.imagePreview" alt="Preview" />
               <button @click.stop="removeRequestImage" class="btn-remove-image">✕</button>
             </div>
@@ -157,7 +160,26 @@
               <small>PNG, JPG, JPEG, GIF up to 5MB</small>
             </div>
           </div>
+
+          <!-- Secondary: paste image URL -->
+          <div style="margin-top: 0.6rem;">
+            <small style="color: #6b7280; display: block; margin-bottom: 0.25rem;">
+              — or paste an image URL —
+            </small>
+            <input
+              v-model="requestForm.image_url"
+              type="text"
+              class="form-control"
+              placeholder="https://example.com/image.jpg"
+              @input="onRequestUrlInput"
+            />
+            <div v-if="requestForm.imageUrlPreview" class="image-preview" style="margin-top: 0.5rem;">
+              <img :src="requestForm.imageUrlPreview" alt="URL preview" />
+              <button @click.stop="clearRequestUrl" class="btn-remove-image">✕</button>
+            </div>
+          </div>
         </div>
+
         <div class="form-group">
           <label>Description</label>
           <textarea v-model="requestForm.description" class="form-control" placeholder="Product description" rows="2"></textarea>
@@ -265,12 +287,19 @@
             <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
           </select>
         </div>
+
         <div class="form-group">
           <label>Product Image</label>
+
+          <!-- Primary: file upload -->
           <div class="image-upload" @click="$refs.editFileInput.click()">
             <input type="file" ref="editFileInput" @change="handleEditImageUpload" accept="image/*" style="display: none;" />
-            <div v-if="editForm.imagePreview" class="image-preview">
+            <div v-if="editForm.imagePreview && editForm.imageFile" class="image-preview">
               <img :src="editForm.imagePreview" alt="Preview" />
+              <button @click.stop="removeEditImage" class="btn-remove-image">✕</button>
+            </div>
+            <div v-else-if="editForm.imagePreview" class="image-preview">
+              <img :src="editForm.imagePreview" alt="Current" />
               <button @click.stop="removeEditImage" class="btn-remove-image">✕</button>
             </div>
             <div v-else class="upload-placeholder">
@@ -279,7 +308,22 @@
               <small>PNG, JPG, JPEG, GIF up to 5MB</small>
             </div>
           </div>
+
+          <!-- Secondary: paste URL -->
+          <div style="margin-top: 0.6rem;">
+            <small style="color: #6b7280; display: block; margin-bottom: 0.25rem;">
+              — or paste an image URL —
+            </small>
+            <input
+              v-model="editForm.image_url"
+              type="text"
+              class="form-control"
+              placeholder="https://example.com/image.jpg"
+              @input="onEditUrlInput"
+            />
+          </div>
         </div>
+
         <div class="form-group">
           <label>Description</label>
           <textarea v-model="editForm.description" class="form-control" placeholder="Product description" rows="2"></textarea>
@@ -327,7 +371,7 @@ const isSavingEdit = ref(false);
 const requestForm = ref({
   name: '', price: '', stock: '', category_id: '',
   description: '', reason: '', priority: 'medium',
-  imagePreview: '', imageFile: null, image_url: ''
+  imagePreview: '', imageUrlPreview: '', imageFile: null, image_url: ''
 });
 
 const editForm = ref({
@@ -382,35 +426,74 @@ const getApprovalStatusClass = (status) => {
   return 'status-pending';
 };
 
+// ============================================
+// REQUEST FORM — image upload + URL fallback
+// ============================================
 const handleRequestImageUpload = (e) => {
   const file = e.target.files[0];
   if (file) {
     const reader = new FileReader();
-    reader.onload = (e) => { requestForm.value.imagePreview = e.target.result; };
+    reader.onload = (ev) => { requestForm.value.imagePreview = ev.target.result; };
     reader.readAsDataURL(file);
     requestForm.value.imageFile = file;
+    // Clear URL if a file is picked (file wins)
+    requestForm.value.image_url = '';
+    requestForm.value.imageUrlPreview = '';
   }
 };
 const removeRequestImage = () => {
   requestForm.value.imagePreview = '';
   requestForm.value.imageFile = null;
-  if (requestForm.value.image_url) requestForm.value.image_url = '';
 };
+const onRequestUrlInput = () => {
+  const url = (requestForm.value.image_url || '').trim();
+  if (url && /^https?:\/\//i.test(url)) {
+    requestForm.value.imageUrlPreview = url;
+    // If user pasted a URL, clear any picked file (URL wins for this interaction)
+    if (requestForm.value.imageFile) {
+      requestForm.value.imageFile = null;
+      requestForm.value.imagePreview = '';
+    }
+  } else {
+    requestForm.value.imageUrlPreview = '';
+  }
+};
+const clearRequestUrl = () => {
+  requestForm.value.image_url = '';
+  requestForm.value.imageUrlPreview = '';
+};
+
+// ============================================
+// EDIT FORM — image upload + URL fallback
+// ============================================
 const handleEditImageUpload = (e) => {
   const file = e.target.files[0];
   if (file) {
     const reader = new FileReader();
-    reader.onload = (e) => { editForm.value.imagePreview = e.target.result; };
+    reader.onload = (ev) => { editForm.value.imagePreview = ev.target.result; };
     reader.readAsDataURL(file);
     editForm.value.imageFile = file;
+    editForm.value.image_url = '';
   }
 };
 const removeEditImage = () => {
   editForm.value.imagePreview = '';
   editForm.value.imageFile = null;
-  if (editForm.value.image_url) editForm.value.image_url = '';
+  editForm.value.image_url = '';
+};
+const onEditUrlInput = () => {
+  const url = (editForm.value.image_url || '').trim();
+  if (url && /^https?:\/\//i.test(url)) {
+    editForm.value.imagePreview = url;
+    if (editForm.value.imageFile) {
+      editForm.value.imageFile = null;
+    }
+  }
 };
 
+// ============================================
+// LOADERS
+// ============================================
 const loadProducts = async () => {
   loading.value = true;
   try {
@@ -447,11 +530,14 @@ const loadApprovals = async () => {
   finally { approvalsLoading.value = false; }
 };
 
+// ============================================
+// REQUEST MODAL
+// ============================================
 const openRequestModal = () => {
   requestForm.value = {
     name: '', price: '', stock: '', category_id: '',
     description: '', reason: '', priority: 'medium',
-    imagePreview: '', imageFile: null, image_url: ''
+    imagePreview: '', imageUrlPreview: '', imageFile: null, image_url: ''
   };
   showRequestModal.value = true;
 };
@@ -482,8 +568,11 @@ const submitRequest = async () => {
       formData.append('category_id', requestForm.value.category_id);
     }
 
+    // ✅ Priority: file upload > URL
     if (requestForm.value.imageFile) {
       formData.append('image', requestForm.value.imageFile);
+    } else if (requestForm.value.image_url && /^https?:\/\//i.test(requestForm.value.image_url.trim())) {
+      formData.append('image_url', requestForm.value.image_url.trim());
     }
 
     const response = await api.post('/product_approvals.php', formData, {
@@ -510,6 +599,9 @@ const submitRequest = async () => {
   } finally { isSavingRequest.value = false; }
 };
 
+// ============================================
+// EDIT MODAL
+// ============================================
 const editProduct = (product) => {
   editForm.value = {
     id: product.id,
@@ -520,7 +612,7 @@ const editProduct = (product) => {
     description: product.description || '',
     imagePreview: getProductImage(product),
     imageFile: null,
-    image_url: product.image_url || ''
+    image_url: ''
   };
   showEditModal.value = true;
 };
@@ -547,8 +639,11 @@ const saveEditProduct = async () => {
       formData.append('category_id', editForm.value.category_id);
     }
 
+    // ✅ Priority: file upload > URL
     if (editForm.value.imageFile) {
       formData.append('image', editForm.value.imageFile);
+    } else if (editForm.value.image_url && /^https?:\/\//i.test(editForm.value.image_url.trim())) {
+      formData.append('image_url', editForm.value.image_url.trim());
     }
 
     const response = await api.post(`/products.php?id=${editForm.value.id}`, formData, {
@@ -569,6 +664,9 @@ const saveEditProduct = async () => {
   } finally { isSavingEdit.value = false; }
 };
 
+// ============================================
+// APPROVALS
+// ============================================
 const openApprovalsModal = async () => { showApprovalsModal.value = true; await loadApprovals(); };
 const closeApprovalsModal = () => { showApprovalsModal.value = false; };
 
@@ -619,6 +717,9 @@ const rejectProduct = async (id) => {
   }
 };
 
+// ============================================
+// ARCHIVE / RESTORE / DELETE
+// ============================================
 const archiveProduct = async (id) => {
   const result = await Swal.fire({
     title: 'Archive Product?', text: 'Are you sure you want to archive this product?',
@@ -657,9 +758,6 @@ const restoreProduct = async (id) => {
   }
 };
 
-// ============================================
-// DELETE — with archive-aware response handling
-// ============================================
 const deleteProductPermanent = async (product) => {
   const result = await Swal.fire({
     title: 'Delete Product?',
@@ -685,7 +783,6 @@ const deleteProductPermanent = async (product) => {
     await loadProducts();
 
     if (response.data?.archived) {
-      // Soft-deleted: shows info toast with the reason
       await Swal.fire({
         icon: 'info',
         title: 'Archived, Not Deleted',
@@ -698,7 +795,6 @@ const deleteProductPermanent = async (product) => {
         confirmButtonColor: '#4F46E5'
       });
     } else {
-      // Hard-deleted
       await Swal.fire({
         icon: 'success',
         title: 'Deleted',
