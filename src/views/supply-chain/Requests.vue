@@ -274,6 +274,31 @@
             </div>
           </div>
 
+          <!-- ✅ NEW: Wallet chooser shown ONLY when Source is selected -->
+          <div v-if="forms.pay.method === 'source'" class="form-group">
+            <label>Choose Wallet <span class="required">*</span></label>
+            <div class="method-grid wallet-grid">
+              <button type="button" class="method-btn wallet-btn"
+                :class="{ selected: forms.pay.wallet === 'gcash' }"
+                @click="forms.pay.wallet = 'gcash'">
+                <i class="fas fa-wallet"></i>
+                <span>GCash</span>
+              </button>
+              <button type="button" class="method-btn wallet-btn"
+                :class="{ selected: forms.pay.wallet === 'maya' }"
+                @click="forms.pay.wallet = 'maya'">
+                <i class="fas fa-wallet"></i>
+                <span>Maya</span>
+              </button>
+              <button type="button" class="method-btn wallet-btn"
+                :class="{ selected: forms.pay.wallet === 'grab_pay' }"
+                @click="forms.pay.wallet = 'grab_pay'">
+                <i class="fas fa-wallet"></i>
+                <span>GrabPay</span>
+              </button>
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Notes (optional)</label>
             <input v-model="forms.pay.notes" class="form-control" placeholder="Optional payment note" />
@@ -382,7 +407,7 @@ const forms = ref({
   order:       { supplier_id: '', quantity: 1 },
   unavailable: { reason: '' },
   receive:     { qty: 0, notes: '' },
-  pay:         { method: 'checkout', notes: '' },
+  pay:         { method: 'checkout', wallet: 'gcash', notes: '' }, // ✅ wallet added
   close:       { rating: 5, comment: '' },
 })
 
@@ -505,7 +530,7 @@ const openReceiveModal = (req) => {
 }
 const openPayModal = (req) => {
   activeRequest.value = req
-  forms.value.pay = { method: 'checkout', notes: '' }
+  forms.value.pay = { method: 'checkout', wallet: 'gcash', notes: '' } // ✅ reset wallet
   payError.value = null
   modals.value.pay = true
 }
@@ -609,27 +634,49 @@ const submitReceive = async () => {
   finally { busy.value = false }
 }
 
+// ✅ FIXED: sends `method` field when Source is chosen
 const submitPay = async () => {
+  if (payLoading.value) return
+  if (!forms.value.pay.method) {
+    payError.value = 'Please select a payment method'
+    return
+  }
+  if (forms.value.pay.method === 'source' && !forms.value.pay.wallet) {
+    payError.value = 'Please choose a wallet (GCash, Maya, or GrabPay)'
+    return
+  }
+
   payLoading.value = true
   payError.value = null
   try {
+    const isSource = forms.value.pay.method === 'source'
     const returnUrl = `${window.location.origin}/supply-chain/requests?paid=${activeRequest.value.id}`
-    const r = await api.post('/payments.php', {
-      kind: forms.value.pay.method === 'source' ? 'create_source' : 'create_checkout',
+
+    const payload = {
+      kind: isSource ? 'create_source' : 'create_checkout',
       amount: Number(activeRequest.value.total_cost),
       description: forms.value.pay.notes || `Payment for ${activeRequest.value.po_number || 'PO'} — ${activeRequest.value.product_name}`,
       po_id: activeRequest.value.po_id,
       return_url: returnUrl,
       request_id: activeRequest.value.id,
       supplier_id: activeRequest.value.supplier_id,
-    })
-    const payload = r.data?.data || r.data
-    const url = payload?.checkout_url || payload?.redirect_url
+    }
+
+    // ✅ Source requires a specific wallet method
+    if (isSource) {
+      payload.method = forms.value.pay.wallet // gcash | maya | grab_pay
+    }
+
+    const r = await api.post('/payments.php', payload)
+    const data = r.data?.data || r.data
+    const url = data?.checkout_url || data?.redirect_url
     if (!url) throw new Error(r.data?.message || 'No checkout URL returned')
     window.location.href = url
   } catch (e) {
     payError.value = e.response?.data?.message || e.message || 'Payment failed to start'
-  } finally { payLoading.value = false }
+  } finally {
+    payLoading.value = false
+  }
 }
 
 const submitClose = async () => {
@@ -838,6 +885,8 @@ onMounted(async () => {
   margin-top: 0.5rem;
 }
 
+.wallet-grid { grid-template-columns: 1fr 1fr 1fr; }
+
 .method-btn {
   display: flex;
   flex-direction: column;
@@ -881,6 +930,9 @@ onMounted(async () => {
   line-height: 1.2;
 }
 
+.wallet-btn { padding: 0.75rem 0.5rem; }
+.wallet-btn i { font-size: 1.2rem; }
+
 .rating-stars { display: flex; gap: .4rem; font-size: 2rem; }
 .rating-stars i { cursor: pointer; color: #d1d5db; transition: color .15s, transform .15s; }
 .rating-stars i.filled { color: #F59E0B; }
@@ -899,5 +951,6 @@ onMounted(async () => {
   .step-line { width: 2px; height: 20px; }
   .action-buttons { flex-direction: column; }
   .method-grid { grid-template-columns: 1fr; }
+  .wallet-grid { grid-template-columns: 1fr; }
 }
 </style>
