@@ -1,6 +1,6 @@
 // src/stores/payroll.js
 // ============================================
-// 💰 Payroll Store — Clean rewrite
+// 💰 Payroll Store — Preview + Save + Approval
 // ============================================
 
 import { defineStore } from 'pinia'
@@ -26,12 +26,12 @@ export const usePayrollStore = defineStore('payroll', {
   }),
 
   getters: {
-    pendingCount:        (s) => s.payrollRecords.filter(r => r.status === 'pending').length,
-    financeApprovedCount:(s) => s.payrollRecords.filter(r => r.status === 'finance_approved').length,
-    approvedCount:       (s) => s.payrollRecords.filter(r => r.status === 'approved').length,
-    paidCount:           (s) => s.payrollRecords.filter(r => r.status === 'paid').length,
+    pendingCount:         (s) => s.payrollRecords.filter(r => r.status === 'pending').length,
+    financeApprovedCount: (s) => s.payrollRecords.filter(r => r.status === 'finance_approved').length,
+    approvedCount:        (s) => s.payrollRecords.filter(r => r.status === 'approved').length,
+    paidCount:            (s) => s.payrollRecords.filter(r => r.status === 'paid').length,
 
-    totalNetPay:   (s) => s.payrollRecords.reduce((sum, r) => sum + parseFloat(r.net_pay || 0), 0),
+    totalNetPay:     (s) => s.payrollRecords.reduce((sum, r) => sum + parseFloat(r.net_pay || 0), 0),
     totalDeductions: (s) => s.payrollRecords.reduce((sum, r) => sum + parseFloat(r.deductions || 0), 0),
   },
 
@@ -90,35 +90,60 @@ export const usePayrollStore = defineStore('payroll', {
     },
 
     // ============================================
-    // PROCESS PAYROLL
+    // PREVIEW PAYROLL (compute only, no DB write)
     // ============================================
-    async processPayroll(periodType, periodStart, periodEnd, employeeIds) {
+    async previewPayroll(periodType, periodStart, periodEnd, employeeIds) {
       this.loading = true
       try {
         const auth = useAuthStore()
-        const payload = {
+        const { data } = await api.post('/payroll_process.php?action=preview', {
           period_type:  periodType,
           period_start: periodStart,
           period_end:   periodEnd,
           employee_ids: employeeIds,
           created_by:   auth.user?.id || 1,
-        }
-
-        const { data } = await api.post('/payroll_process.php', payload)
-
-        if (data.success) {
-          await this.fetchPayrollRecords()
-        }
+        })
         return data
       } catch (e) {
-        console.error('processPayroll:', e)
         return {
           success: false,
-          message: e.response?.data?.message || e.message || 'Failed to process payroll',
+          message: e.response?.data?.message || e.message || 'Preview failed',
         }
       } finally {
         this.loading = false
       }
+    },
+
+    // ============================================
+    // SAVE PAYROLL (with HR overrides)
+    // ============================================
+    async savePayroll(periodType, periodStart, periodEnd, employeeIds, overrides = {}) {
+      this.loading = true
+      try {
+        const auth = useAuthStore()
+        const { data } = await api.post('/payroll_process.php?action=save', {
+          period_type:  periodType,
+          period_start: periodStart,
+          period_end:   periodEnd,
+          employee_ids: employeeIds,
+          created_by:   auth.user?.id || 1,
+          overrides,
+        })
+        if (data.success) await this.fetchPayrollRecords()
+        return data
+      } catch (e) {
+        return {
+          success: false,
+          message: e.response?.data?.message || e.message || 'Save failed',
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Legacy alias — old code paths keep working
+    async processPayroll(periodType, periodStart, periodEnd, employeeIds) {
+      return this.savePayroll(periodType, periodStart, periodEnd, employeeIds, {})
     },
 
     // ============================================
@@ -247,11 +272,11 @@ export const usePayrollStore = defineStore('payroll', {
     },
 
     async approveLeave(id) {
-      return this._leaveAction(id, 'approve');
+      return this._leaveAction(id, 'approve')
     },
 
     async rejectLeave(id) {
-      return this._leaveAction(id, 'reject');
+      return this._leaveAction(id, 'reject')
     },
 
     async _leaveAction(id, action) {
@@ -278,11 +303,11 @@ export const usePayrollStore = defineStore('payroll', {
       try {
         const auth = useAuthStore()
         const { data } = await api.post('/salary_history.php?action=promote', {
-          user_id:          userId,
-          new_salary_rate:  newRate,
-          new_salary_type:  newType,
+          user_id:         userId,
+          new_salary_rate: newRate,
+          new_salary_type: newType,
           reason,
-          promoted_by:      auth.user?.id || 1,
+          promoted_by:     auth.user?.id || 1,
         })
         return data
       } catch (e) {
@@ -320,8 +345,8 @@ export const usePayrollStore = defineStore('payroll', {
       const headers = [
         'Employee', 'Department', 'Period Start', 'Period End',
         'Days Present', 'Days Late', 'Days Absent',
-        'Basic Salary', 'Holiday Pay', 'Leave Pay',
-        'Deductions', 'Net Pay', 'Status',
+        'Basic Salary', 'Bonus', 'Allowances', 'Holiday Pay', 'Leave Pay',
+        'Deductions', 'Other Deductions', 'Net Pay', 'Status',
       ]
 
       const rows = records.map(r => [
@@ -333,9 +358,12 @@ export const usePayrollStore = defineStore('payroll', {
         r.days_late || 0,
         r.days_absent || 0,
         r.basic_salary || 0,
+        r.bonus || 0,
+        r.allowances || 0,
         r.holiday_pay || 0,
         r.leave_pay || 0,
         r.deductions || 0,
+        r.other_deductions || 0,
         r.net_pay || 0,
         r.status || '',
       ])

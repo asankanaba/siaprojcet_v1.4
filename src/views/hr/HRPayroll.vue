@@ -6,9 +6,7 @@
       <div class="page-content">
         <div class="payroll-container">
 
-          <!-- ============================== -->
           <!-- HEADER -->
-          <!-- ============================== -->
           <header class="page-header">
             <div>
               <h2><i class="fas fa-wallet"></i> Payroll Management</h2>
@@ -24,9 +22,7 @@
             </div>
           </header>
 
-          <!-- ============================== -->
           <!-- STATS -->
-          <!-- ============================== -->
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-icon" style="background: linear-gradient(135deg, #e0e7ff, #c7d2fe); color: #4F46E5;">
@@ -66,9 +62,7 @@
             </div>
           </div>
 
-          <!-- ============================== -->
           <!-- TABS -->
-          <!-- ============================== -->
           <nav class="tabs-nav">
             <button
               v-for="tab in tabs"
@@ -83,9 +77,7 @@
             </button>
           </nav>
 
-          <!-- ============================== -->
           <!-- TAB 1: PROCESS -->
-          <!-- ============================== -->
           <section v-show="activeTab === 'process'" class="tab-content">
             <div class="panel">
               <div class="panel-head">
@@ -148,7 +140,6 @@
               </div>
             </div>
 
-            <!-- Selected summary -->
             <div v-if="selectedEmployees.length > 0" class="selected-summary">
               <div class="summary-head">
                 <h4><i class="fas fa-user-check"></i> {{ selectedEmployees.length }} Selected</h4>
@@ -163,9 +154,7 @@
             </div>
           </section>
 
-          <!-- ============================== -->
           <!-- TAB 2: RECORDS -->
-          <!-- ============================== -->
           <section v-show="activeTab === 'records'" class="tab-content">
             <div class="panel">
               <div class="panel-head">
@@ -201,8 +190,7 @@
                       <th>Period</th>
                       <th class="num">Days</th>
                       <th class="num">Basic</th>
-                      <th class="num">Holiday</th>
-                      <th class="num">Deductions</th>
+                      <th class="num">Bonus</th>
                       <th class="num">Net Pay</th>
                       <th>Status</th>
                       <th class="center">Actions</th>
@@ -223,13 +211,10 @@
                         <div class="muted">{{ rec.days_late || 0 }} L · {{ rec.days_absent || 0 }} A</div>
                       </td>
                       <td class="num">₱{{ formatPrice(rec.basic_salary) }}</td>
-                      <td class="num">₱{{ formatPrice(rec.holiday_pay) }}</td>
-                      <td class="num text-danger">-₱{{ formatPrice(rec.deductions) }}</td>
+                      <td class="num">₱{{ formatPrice(rec.bonus) }}</td>
                       <td class="num text-success"><strong>₱{{ formatPrice(rec.net_pay) }}</strong></td>
                       <td><span :class="statusClass(rec.status)">{{ statusLabel(rec.status) }}</span></td>
                       <td class="center actions-cell">
-
-                        <!-- FINANCE: pending → approve -->
                         <button
                           v-if="rec.status === 'pending' && canFinance"
                           @click="openApproveModal(rec, 'finance')"
@@ -239,7 +224,6 @@
                           <i class="fas fa-money-check"></i> Approve
                         </button>
 
-                        <!-- HR: finance_approved → final approve -->
                         <button
                           v-if="rec.status === 'finance_approved' && canHr"
                           @click="openApproveModal(rec, 'hr')"
@@ -249,7 +233,6 @@
                           <i class="fas fa-check-double"></i> Approve
                         </button>
 
-                        <!-- FINANCE: approved → mark paid -->
                         <button
                           v-if="rec.status === 'approved' && canFinance"
                           @click="openPayModal(rec)"
@@ -259,7 +242,6 @@
                           <i class="fas fa-credit-card"></i> Pay
                         </button>
 
-                        <!-- PAID: view payslip + promote -->
                         <template v-if="rec.status === 'paid'">
                           <button @click="goToPayslip(rec.id)" class="btn-sm btn-view" title="View Payslip">
                             <i class="fas fa-file-invoice"></i>
@@ -274,7 +256,6 @@
                           </button>
                         </template>
 
-                        <!-- REJECT -->
                         <button
                           v-if="['pending', 'finance_approved'].includes(rec.status) && (canFinance || canHr)"
                           @click="openRejectModal(rec)"
@@ -291,9 +272,7 @@
             </div>
           </section>
 
-          <!-- ============================== -->
           <!-- TAB 3: HOLIDAYS -->
-          <!-- ============================== -->
           <section v-show="activeTab === 'holidays'" class="tab-content">
             <div class="panel">
               <div class="panel-head">
@@ -345,9 +324,7 @@
             </div>
           </section>
 
-          <!-- ============================== -->
           <!-- TAB 4: LEAVE -->
-          <!-- ============================== -->
           <section v-show="activeTab === 'leave'" class="tab-content">
             <div class="panel">
               <div class="panel-head">
@@ -414,14 +391,135 @@
   </div>
 
   <!-- =========================================== -->
-  <!-- MODALS -->
+  <!-- PREVIEW MODAL -->
   <!-- =========================================== -->
+  <div v-if="showPreviewModal" class="modal-overlay" @click.self="showPreviewModal = false">
+    <div class="modal-content" style="max-width: 960px;">
+      <div class="modal-header">
+        <h5><i class="fas fa-eye"></i> Preview Payroll</h5>
+        <button @click="showPreviewModal = false" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="muted small" style="margin-bottom: 1rem;">
+          Review the auto-computed amounts below. Click <strong>Edit</strong> on any row to add bonus, allowances, or other deductions.
+        </p>
 
-  <!-- PROCESS MODAL -->
+        <div class="table-wrap" style="max-height: 420px; overflow-y: auto;">
+          <table class="data-table" style="min-width: 720px;">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th class="num">Days</th>
+                <th class="num">Basic</th>
+                <th class="num">Bonus</th>
+                <th class="num">Allow.</th>
+                <th class="num">Deduct</th>
+                <th class="num">Net</th>
+                <th class="center">Edit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, i) in previewRows" :key="row.user_id">
+                <td>
+                  <strong>{{ row.full_name }}</strong>
+                  <div class="muted small">{{ row.department || 'General' }}</div>
+                </td>
+                <td class="num small">
+                  {{ row.days_present }} P<br>
+                  <span class="muted">{{ row.days_late }} L · {{ row.days_absent }} A</span>
+                </td>
+                <td class="num">₱{{ formatPrice(row.basic_salary) }}</td>
+                <td class="num">₱{{ formatPrice(row.bonus) }}</td>
+                <td class="num">₱{{ formatPrice(row.allowances) }}</td>
+                <td class="num text-danger">
+                  -₱{{ formatPrice(Number(row.deductions) + Number(row.other_deductions)) }}
+                </td>
+                <td class="num text-success"><strong>₱{{ formatPrice(row.net_pay) }}</strong></td>
+                <td class="center">
+                  <button @click="editRow(i)" class="btn-sm btn-edit" title="Edit">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="summary-box" style="margin-top: 1rem;">
+          <div><span>Gross Total</span><strong>₱{{ formatPrice(previewTotals.gross) }}</strong></div>
+          <div><span>Total Deductions</span><strong class="text-danger">-₱{{ formatPrice(previewTotals.deductions) }}</strong></div>
+          <div style="border-top: 1px solid #e5e7eb; padding-top: .5rem; margin-top: .25rem;">
+            <span><strong>Net Payout</strong></span>
+            <strong class="text-success" style="font-size: 1.1rem;">₱{{ formatPrice(previewTotals.net) }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button @click="showPreviewModal = false" class="btn btn-secondary" :disabled="processing">Back</button>
+        <button @click="savePreview" class="btn btn-primary" :disabled="processing">
+          <i v-if="processing" class="fas fa-spinner spin"></i>
+          {{ processing ? 'Saving...' : 'Save All' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================== -->
+  <!-- EDIT ROW MODAL -->
+  <!-- =========================================== -->
+  <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5><i class="fas fa-edit"></i> Edit — {{ previewRows[editIndex]?.full_name }}</h5>
+        <button @click="closeEditModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="summary-box">
+          <div><span>Basic Salary</span><strong>₱{{ formatPrice(previewRows[editIndex]?.basic_salary) }}</strong></div>
+          <div><span>Holiday Pay</span><strong>₱{{ formatPrice(previewRows[editIndex]?.holiday_pay) }}</strong></div>
+          <div><span>Leave Pay</span><strong>₱{{ formatPrice(previewRows[editIndex]?.leave_pay) }}</strong></div>
+          <div><span>Auto Deductions</span><strong class="text-danger">-₱{{ formatPrice(previewRows[editIndex]?.deductions) }}</strong></div>
+        </div>
+
+        <div class="form-group">
+          <label>Bonus</label>
+          <input v-model.number="editForm.bonus" type="number" step="0.01" class="form-control" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Allowances</label>
+          <input v-model.number="editForm.allowances" type="number" step="0.01" class="form-control" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Other Deductions</label>
+          <input v-model.number="editForm.other_deductions" type="number" step="0.01" class="form-control" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea v-model="editForm.notes" rows="2" class="form-control" placeholder="e.g. Christmas bonus, adjustment"></textarea>
+        </div>
+
+        <div class="summary-box" style="background: linear-gradient(135deg, rgba(16,185,129,.08), rgba(16,185,129,.02)); border: 1px solid rgba(16,185,129,.3);">
+          <div><span>New Net Pay</span>
+            <strong class="text-success" style="font-size: 1.2rem;">₱{{ formatPrice(editPreviewNet) }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button @click="closeEditModal" class="btn btn-secondary">Cancel</button>
+        <button @click="applyEdit" class="btn btn-primary">
+          <i class="fas fa-check"></i> Apply
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================== -->
+  <!-- PROCESS MODAL (period picker) -->
+  <!-- =========================================== -->
   <div v-if="showProcessModal" class="modal-overlay" @click.self="closeProcessModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h5><i class="fas fa-calculator"></i> Process Payroll</h5>
+        <h5><i class="fas fa-calculator"></i> Select Period</h5>
         <button @click="closeProcessModal" class="btn-close">&times;</button>
       </div>
       <div class="modal-body">
@@ -452,15 +550,15 @@
 
         <div class="info-box">
           <i class="fas fa-info-circle"></i>
-          Payroll will be computed from attendance, shifts, holidays, and approved leave.
-          Result status: <strong>pending</strong> — waiting for Finance approval.
+          Payroll will be auto-computed from attendance, shifts, holidays, and approved leave.
+          You'll get a chance to review and edit before saving.
         </div>
       </div>
       <div class="modal-footer">
         <button @click="closeProcessModal" class="btn btn-secondary" :disabled="processing">Cancel</button>
         <button @click="submitProcess" class="btn btn-primary" :disabled="processing">
           <i v-if="processing" class="fas fa-spinner spin"></i>
-          {{ processing ? 'Processing...' : 'Process Now' }}
+          {{ processing ? 'Computing...' : 'Preview Payroll' }}
         </button>
       </div>
     </div>
@@ -651,13 +749,26 @@ const processing = ref(false)
 const selectedEmployees = ref([])
 const activeRecord      = ref(null)
 
-// Modal visibility
+// Modals
 const showProcessModal  = ref(false)
+const showPreviewModal  = ref(false)
+const showEditModal     = ref(false)
 const showApproveModal  = ref(false)
 const showPayModal      = ref(false)
 const showRejectModal   = ref(false)
 const showHolidayModal  = ref(false)
 const showPromoteModal  = ref(false)
+
+// Preview / edit state
+const previewRows = ref([])
+const overrides   = ref({})
+const editIndex   = ref(-1)
+const editForm    = ref({
+  bonus: 0,
+  allowances: 0,
+  other_deductions: 0,
+  notes: '',
+})
 
 // Forms
 const processForm = ref({
@@ -666,13 +777,8 @@ const processForm = ref({
   endDate: '',
 })
 
-const approveForm = ref({
-  stage: 'finance',
-})
-
-const rejectForm = ref({
-  reason: '',
-})
+const approveForm = ref({ stage: 'finance' })
+const rejectForm  = ref({ reason: '' })
 
 const holidayForm = ref({
   id: null,
@@ -722,6 +828,25 @@ const leaveRequests  = computed(() => payroll.leaveRequests)
 const pendingCount  = computed(() => payroll.pendingCount)
 const approvedCount = computed(() => payroll.approvedCount + payroll.financeApprovedCount)
 const totalNetPay   = computed(() => payroll.totalNetPay)
+
+const previewTotals = computed(() => {
+  const rows = previewRows.value
+  return {
+    gross: rows.reduce((s, r) => s + Number(r.gross_pay || 0), 0),
+    deductions: rows.reduce((s, r) => s + Number(r.deductions || 0) + Number(r.other_deductions || 0), 0),
+    net: rows.reduce((s, r) => s + Number(r.net_pay || 0), 0),
+  }
+})
+
+const editPreviewNet = computed(() => {
+  const i = editIndex.value
+  if (i < 0) return 0
+  const row = previewRows.value[i]
+  const gross = Number(row.basic_salary) + Number(row.holiday_pay) + Number(row.leave_pay)
+              + Number(editForm.value.bonus || 0) + Number(editForm.value.allowances || 0)
+  const totalDeduct = Number(row.deductions) + Number(editForm.value.other_deductions || 0)
+  return Math.max(0, gross - totalDeduct)
+})
 
 // ============================================
 // UTILITIES
@@ -797,7 +922,7 @@ const clearSelection = () => {
 }
 
 // ============================================
-// PROCESS PAYROLL
+// PROCESS → PREVIEW
 // ============================================
 const getPeriodDates = (type) => {
   const today = new Date()
@@ -857,37 +982,112 @@ const submitProcess = async () => {
   processing.value = true
   try {
     const ids = selectedEmployees.value.map(e => e.id)
-    const res = await payroll.processPayroll(
+    const res = await payroll.previewPayroll(
       processForm.value.periodType,
       processForm.value.startDate,
       processForm.value.endDate,
       ids
     )
 
-    if (res.success) {
+    if (res.success && res.data?.details?.length > 0) {
       showProcessModal.value = false
+      previewRows.value = res.data.details.map(r => ({
+        ...r,
+        bonus: 0,
+        allowances: 0,
+        other_deductions: 0,
+        notes: '',
+      }))
+      overrides.value = {}
+      showPreviewModal.value = true
+    } else {
+      Swal.fire({
+        icon: 'info',
+        title: 'No Records',
+        text: res.message || 'No attendance data in this period.',
+        confirmButtonColor: '#4F46E5',
+      })
+    }
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'Error', text: e.message })
+  } finally {
+    processing.value = false
+  }
+}
+
+const editRow = (index) => {
+  editIndex.value = index
+  const row = previewRows.value[index]
+  editForm.value = {
+    bonus:            Number(row.bonus || 0),
+    allowances:       Number(row.allowances || 0),
+    other_deductions: Number(row.other_deductions || 0),
+    notes:            row.notes || '',
+  }
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  editIndex.value = -1
+}
+
+const applyEdit = () => {
+  const i = editIndex.value
+  if (i < 0) return
+  const row = previewRows.value[i]
+  row.bonus            = Number(editForm.value.bonus) || 0
+  row.allowances       = Number(editForm.value.allowances) || 0
+  row.other_deductions = Number(editForm.value.other_deductions) || 0
+  row.notes            = editForm.value.notes
+
+  const gross = Number(row.basic_salary) + Number(row.holiday_pay) + Number(row.leave_pay)
+              + row.bonus + row.allowances
+  const totalDeduct = Number(row.deductions) + row.other_deductions
+  row.gross_pay = gross
+  row.net_pay = Math.max(0, gross - totalDeduct)
+
+  overrides.value[row.user_id] = {
+    bonus:            row.bonus,
+    allowances:       row.allowances,
+    other_deductions: row.other_deductions,
+    notes:            row.notes,
+  }
+
+  closeEditModal()
+}
+
+const savePreview = async () => {
+  processing.value = true
+  try {
+    const ids = previewRows.value.map(r => r.user_id)
+    const res = await payroll.savePayroll(
+      processForm.value.periodType,
+      processForm.value.startDate,
+      processForm.value.endDate,
+      ids,
+      overrides.value
+    )
+
+    if (res.success) {
+      showPreviewModal.value = false
+      previewRows.value = []
+      overrides.value = {}
       clearSelection()
       activeTab.value = 'records'
       await loadRecords()
 
-      const details = res.data?.details || []
-      const total   = res.data?.summary?.total_net_pay || 0
-
       Swal.fire({
-        icon: details.length > 0 ? 'success' : 'info',
-        title: details.length > 0 ? 'Payroll Processed!' : 'No Attendance',
-        html: details.length > 0
-          ? `<p><strong>${details.length}</strong> employee(s) processed</p>
-             <p>Total net: <strong>₱${formatPrice(total)}</strong></p>
-             <p style="color:#6b7280;font-size:.85rem;">Awaiting Finance approval</p>`
-          : '<p>No attendance records found in this period.</p>',
+        icon: 'success',
+        title: 'Payroll Saved!',
+        html: `<p><strong>${res.data.processed}</strong> employee(s)</p>
+               <p>Total net: <strong>₱${formatPrice(res.data.summary.total_net_pay)}</strong></p>
+               <p style="color:#6b7280;font-size:.85rem;">Awaiting Finance approval</p>`,
         confirmButtonColor: '#4F46E5',
       })
     } else {
-      Swal.fire({ icon: 'error', title: 'Failed', text: res.message, confirmButtonColor: '#EF4444' })
+      Swal.fire({ icon: 'error', title: 'Failed', text: res.message })
     }
-  } catch (e) {
-    Swal.fire({ icon: 'error', title: 'Error', text: e.message, confirmButtonColor: '#EF4444' })
   } finally {
     processing.value = false
   }
@@ -922,7 +1122,7 @@ const submitApprove = async () => {
         showConfirmButton: false,
       })
     } else {
-      Swal.fire({ icon: 'error', title: 'Failed', text: res.message, confirmButtonColor: '#EF4444' })
+      Swal.fire({ icon: 'error', title: 'Failed', text: res.message })
     }
   } finally {
     processing.value = false
@@ -953,7 +1153,7 @@ const submitPay = async () => {
         showConfirmButton: false,
       })
     } else {
-      Swal.fire({ icon: 'error', title: 'Failed', text: res.message, confirmButtonColor: '#EF4444' })
+      Swal.fire({ icon: 'error', title: 'Failed', text: res.message })
     }
   } finally {
     processing.value = false
@@ -979,7 +1179,7 @@ const submitReject = async () => {
       await loadRecords()
       Swal.fire({ icon: 'info', title: 'Rejected', timer: 1400, showConfirmButton: false })
     } else {
-      Swal.fire({ icon: 'error', title: 'Failed', text: res.message, confirmButtonColor: '#EF4444' })
+      Swal.fire({ icon: 'error', title: 'Failed', text: res.message })
     }
   } finally {
     processing.value = false
@@ -1008,7 +1208,7 @@ const syncMultiplier = () => {
 
 const submitHoliday = async () => {
   if (!holidayForm.value.name || !holidayForm.value.holiday_date) {
-    Swal.fire({ icon: 'warning', title: 'Name and date required', confirmButtonColor: '#4F46E5' })
+    Swal.fire({ icon: 'warning', title: 'Name and date required' })
     return
   }
   processing.value = true
@@ -1026,7 +1226,7 @@ const submitHoliday = async () => {
       await payroll.fetchHolidays()
       Swal.fire({ icon: 'success', title: 'Saved', timer: 1200, showConfirmButton: false })
     } else {
-      Swal.fire({ icon: 'error', title: 'Failed', text: res.message, confirmButtonColor: '#EF4444' })
+      Swal.fire({ icon: 'error', title: 'Failed', text: res.message })
     }
   } finally {
     processing.value = false
@@ -1109,7 +1309,7 @@ const submitPromote = async () => {
       await payroll.fetchEmployees()
       Swal.fire({ icon: 'success', title: 'Promoted!', timer: 1500, showConfirmButton: false })
     } else {
-      Swal.fire({ icon: 'error', title: 'Failed', text: res.message, confirmButtonColor: '#EF4444' })
+      Swal.fire({ icon: 'error', title: 'Failed', text: res.message })
     }
   } finally {
     processing.value = false
@@ -1126,7 +1326,6 @@ const goToPayslip = (id) => router.push(`/hr/payroll/${id}`)
 // MOUNTED
 // ============================================
 onMounted(async () => {
-  // Set default period
   processForm.value.periodType = 'semi_monthly'
   onPeriodTypeChange()
   await refreshAll()
@@ -1188,7 +1387,6 @@ body.dark-mode .btn-refresh { background: rgba(255, 255, 255, .06); border-color
 body.dark-mode .stat-card {
   background: rgba(26, 22, 48, .55);
   border-color: rgba(167, 139, 250, .15);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .3);
 }
 .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
 .stat-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; margin: 0; }
