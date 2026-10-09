@@ -1,6 +1,5 @@
 <template>
   <aside class="sidebar" :class="{ collapsed: isCollapsed }">
-    <!-- Brand -->
     <div class="sidebar-brand">
       <div class="brand-content">
         <i class="fas fa-store"></i>
@@ -91,7 +90,7 @@
             <span v-if="!isCollapsed">{{ item.label }}</span>
           </router-link>
         </div>
-        <div v-if="!isCollapsed && hasNextSection('supply_chain')" class="nav-divider"></div>
+        <div v-if="!isCollapsed" class="nav-divider"></div>
       </template>
 
       <!-- SYSTEM -->
@@ -107,6 +106,16 @@
         >
           <i class="fas fa-user-clock"></i>
           <span v-if="!isCollapsed">My Attendance</span>
+        </router-link>
+
+        <router-link
+          v-if="authStore.canViewMyWallet"
+          to="/my-wallet"
+          class="nav-link"
+          :class="{ active: isActive('/my-wallet') }"
+        >
+          <i class="fas fa-wallet"></i>
+          <span v-if="!isCollapsed">My Wallet</span>
         </router-link>
 
         <router-link
@@ -126,7 +135,6 @@
       </div>
     </nav>
 
-    <!-- Footer -->
     <div class="sidebar-footer">
       <div class="user-role-badge" :style="{ color: authStore.roleLabel?.color || '#6B7280' }">
         <i :class="authStore.roleLabel?.icon || 'fas fa-user'"></i>
@@ -152,9 +160,6 @@ const notifStore = useHRNotificationsStore()
 const isCollapsed = ref(false)
 const demoRoleFilter = ref(localStorage.getItem('demoRoleFilter') || 'all')
 
-// ============================================
-// MENU CONFIG (rendered per-section)
-// ============================================
 const menuConfig = {
   management: {
     items: [
@@ -205,9 +210,6 @@ const menuConfig = {
   }
 }
 
-// ============================================
-// ACTIVE PATH DETECTION
-// ============================================
 const EXACT_PATHS = [
   '/dashboard', '/products', '/sales', '/customers', '/staff', '/pos',
   '/hr/dashboard', '/hr/employees', '/hr/attendance', '/hr/notifications',
@@ -220,7 +222,7 @@ const EXACT_PATHS = [
   '/supply-chain/procurement/requisitions', '/supply-chain/procurement/rfqs',
   '/supply-chain/procurement/goods-receipt', '/supply-chain/procurement/invoices',
   '/supply-chain/procurement/payments', '/supply-chain/procurement/supplier-performance',
-  '/my-attendance', '/settings'
+  '/my-attendance', '/my-wallet', '/settings'
 ]
 
 const isActive = (path) => {
@@ -230,9 +232,6 @@ const isActive = (path) => {
 
 const unreadCount = computed(() => notifStore.unreadCount)
 
-// ============================================
-// SECTION GATING (with demo filter)
-// ============================================
 const SECTIONS_ORDER = ['management', 'hr', 'finance', 'supply_chain']
 
 const isSectionAllowed = (section) => {
@@ -257,7 +256,6 @@ const hasNextSection = (current) => {
 
 const getMenuItems = (section) => {
   const items = menuConfig[section]?.items || []
-  // Deduplicate by path (avoid showing the same route twice)
   const seen = new Set()
   return items.filter(item => {
     if (!authStore.hasModule(item.module)) return false
@@ -267,9 +265,6 @@ const getMenuItems = (section) => {
   })
 }
 
-// ============================================
-// METHODS
-// ============================================
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
   localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed.value))
@@ -302,9 +297,6 @@ const handleDemoFilterChange = (e) => {
   demoRoleFilter.value = e.detail?.filter || 'all'
 }
 
-// ============================================
-// LIFECYCLE
-// ============================================
 let intervalId = null
 
 onMounted(() => {
@@ -322,7 +314,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ---- Keep all your existing CSS EXACTLY as-is ---- */
 .sidebar { width: 240px; display: flex; flex-direction: column; flex-shrink: 0; height: 100vh; position: sticky; top: 0; transition: width 0.3s ease; overflow: hidden; z-index: 100; }
 .sidebar.collapsed { width: 64px; }
 .sidebar-brand { padding: 1rem 1rem; border-bottom: 1px solid var(--glass-border-light-soft); display: flex; align-items: center; justify-content: space-between; min-height: 64px; flex-shrink: 0; }
