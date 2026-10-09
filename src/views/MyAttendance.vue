@@ -486,7 +486,8 @@ const stopTimer = () => {
 };
 
 // ============================================
-// ✅ FIXED: LOAD ATTENDANCE - Removed /api/ prefix
+// ✅ FIXED: LOAD ATTENDANCE — Removed `date=today` filter
+// Now returns the WHOLE MONTH so previous days appear
 // ============================================
 const loadAttendance = async () => {
   loading.value = true;
@@ -505,9 +506,9 @@ const loadAttendance = async () => {
     console.log('📅 Filter Month:', filterMonth.value);
     console.log('📅 Filter Year:', filterYear.value);
     
-    // ✅ FIXED: Removed /api/ prefix
+    // ✅ FIX: No `date=` param — this returns the whole month
     const response = await api.get(
-      `/attendance.php?user_id=${userId}&month=${filterMonth.value}&year=${filterYear.value}&date=${today}`
+      `/attendance.php?user_id=${userId}&month=${filterMonth.value}&year=${filterYear.value}`
     );
     
     console.log('Raw API Response:', response.data);
@@ -520,6 +521,7 @@ const loadAttendance = async () => {
       attendanceRecords.value = [];
     }
     
+    // ✅ Filter today's records CLIENT-SIDE to detect clocked-in state
     const todayRecords = attendanceRecords.value.filter(r => r.date === today);
     const activeRecord = todayRecords.find(r => r.clock_in && !r.clock_out);
     
@@ -549,7 +551,7 @@ const loadAttendance = async () => {
 };
 
 // ============================================
-// ✅ FIXED: TOGGLE ATTENDANCE - Removed /api/ prefix
+// TOGGLE ATTENDANCE
 // ============================================
 const toggleAttendance = async (action) => {
   const userId = authStore.user?.id;
@@ -577,7 +579,6 @@ const toggleAttendance = async (action) => {
     
     console.log(`🔄 ${action === 'in' ? 'Clock In' : 'Clock Out'} attempt at ${timeStr}`);
     
-    // ✅ FIXED: Removed /api/ prefix
     const response = await api.post('/attendance.php', {
       user_id: userId,
       action: action === 'in' ? 'clock_in' : 'clock_out',
@@ -715,6 +716,7 @@ watch([filterMonth, filterYear], () => {
 </script>
 
 <style scoped>
+/* Keep all your existing styles unchanged */
 .app-layout {
   display: flex;
   min-height: 100vh;
