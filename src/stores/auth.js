@@ -164,9 +164,15 @@ export const useAuthStore = defineStore('auth', () => {
     return items
   })
 
+  // ============================================
+  // LOGIN — with lazy load for speed
+  // ============================================
   const login = async (username, password) => {
     try {
+      const t0 = performance.now()
       const response = await api.post('/auth', { username, password })
+      const t1 = performance.now()
+      console.log(`🔐 Login response: ${Math.round(t1 - t0)}ms`)
 
       if (response.data.success) {
         user.value = response.data.user
@@ -179,6 +185,12 @@ export const useAuthStore = defineStore('auth', () => {
             ? user.value.permissions
             : JSON.parse(user.value.permissions)
         }
+
+        // ✅ LAZY: Refresh user details in background (don't block login)
+        setTimeout(() => {
+          getCurrentUser().catch(() => {})
+        }, 100)
+
         return { success: true, user: user.value }
       }
       return { success: false, error: response.data.message || 'Login failed' }
