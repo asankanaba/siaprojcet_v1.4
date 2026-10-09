@@ -6,11 +6,11 @@
         <h1>MaxiMarket</h1>
         <p>Inventory Management System <span class="version-badge">v1.3</span></p>
       </div>
-      
+
       <div v-if="errorMessage" class="alert alert-danger">
         ⚠️ {{ errorMessage }}
       </div>
-      
+
       <form @submit.prevent="handleLogin">
         <div class="form-group">
           <label class="form-label">Username</label>
@@ -27,7 +27,7 @@
             />
           </div>
         </div>
-        
+
         <div class="form-group">
           <label class="form-label">Password</label>
           <div class="input-group">
@@ -43,14 +43,19 @@
             />
           </div>
         </div>
-        
+
         <button
           type="submit"
           class="btn btn-gradient btn-block btn-lg"
           :disabled="loading"
         >
-          <span v-if="!loading">Login</span>
-          <span v-else>Logging in...</span>
+          <span v-if="!loading">
+            <i class="fas fa-sign-in-alt"></i> Login
+          </span>
+          <span v-else class="btn-loader">
+            <i class="fas fa-spinner fa-spin"></i>
+            Please wait — first login may take 10s...
+          </span>
         </button>
       </form>
     </div>
@@ -73,22 +78,22 @@ const loading = ref(false);
 const handleLogin = async () => {
   loading.value = true;
   errorMessage.value = '';
-  
+
   try {
     console.log('🔄 Login attempt from Login.vue');
     console.log('👤 Username:', username.value);
-    
+
     const result = await authStore.login(username.value, password.value);
-    
+
     console.log('📥 Login Result:', result);
-    
+
     if (result.success) {
       console.log('✅ Login successful, redirecting...');
-      
+
       const role = result.user?.role;
       let redirectPath = '/dashboard';
-      
-      // ✅ Proper role-based redirects
+
+      // Role-based redirects
       if (role === 'ceo' || role === 'super_admin') {
         redirectPath = '/ceo-dashboard';
       } else if (role === 'finance') {
@@ -100,11 +105,11 @@ const handleLogin = async () => {
       } else if (role === 'admin') {
         redirectPath = '/dashboard';
       }
-      
+
       console.log('🔄 Redirecting to:', redirectPath);
       console.log('👤 User role:', role);
-      
-      // Use window.location for full page reload
+
+      // Full page reload to reset app state
       window.location.href = redirectPath;
     } else {
       errorMessage.value = result.error || 'Login failed';
@@ -279,5 +284,13 @@ const handleLogin = async () => {
 .btn-lg {
   padding: 0.75rem 1.5rem;
   font-size: 1.05rem;
+  min-height: 52px;
+}
+
+.btn-loader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
 }
 </style>
