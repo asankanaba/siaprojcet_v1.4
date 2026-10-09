@@ -183,7 +183,9 @@ export const useAuthStore = defineStore('auth', () => {
   // ============================================
   const login = async (username, password) => {
     try {
-      const response = await api.post('/auth.php', { username, password })
+      // ✅ FIXED: Changed from '/auth.php' to '/auth' to match backend router
+      const response = await api.post('/auth', { username, password })
+      
       if (response.data.success) {
         user.value = response.data.user
         token.value = response.data.token
