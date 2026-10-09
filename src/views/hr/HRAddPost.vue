@@ -154,7 +154,8 @@ const submitJobPost = async () => {
     closeLoading()
     if (response.data.success) {
       showSuccess('Success!', isEditing.value ? 'Job updated successfully!' : 'Job posted successfully!')
-      router.push('/hr/job-posts')
+      // ✅ FIXED: Changed from '/hr/job-posts' (doesn't exist) to '/hr/jobs' (correct route)
+      router.push('/hr/jobs')
     } else {
       showError('Error', response.data.message || 'Failed to save job')
     }

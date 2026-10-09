@@ -57,7 +57,7 @@ const routes = [
   { path: "/hr/payroll", name: "HRPayroll", component: () => import("@/views/hr/HRPayroll.vue"), meta: { requiresAuth: true, module: "payroll" } },
   { path: "/hr/payroll/:id", name: "HRPayrollDetail", component: () => import("@/views/hr/HRPayrollDetail.vue"), meta: { requiresAuth: true, module: "payroll" } },
 
-  // SUPPLY CHAIN (parent + children)
+  // SUPPLY CHAIN
   {
     path: "/supply-chain",
     name: "SupplyChain",
@@ -80,7 +80,7 @@ const routes = [
     ],
   },
 
-  // ✅ MY ATTENDANCE — module changed from 'attendance' to 'my_attendance'
+  // MY ATTENDANCE
   {
     path: "/my-attendance",
     name: "MyAttendance",
@@ -98,13 +98,13 @@ const routes = [
   // PAYMENTS RETURN
   { path: "/payments/return", name: "PaymentsReturn", component: () => import("@/views/PaymentsReturn.vue"), meta: { public: true, title: "Payment Result" } },
 
-  // PAYMENT DEMO (dev only)
+  // PAYMENT DEMO
   { path: "/payments/demo", name: "PaymentDemo", component: () => import("@/views/PaymentDemo.vue"), meta: { requiresAuth: true, module: "supplier_payments" } },
 
-  // CAREERS (public)
+  // CAREERS
   { path: "/careers/:slug", name: "CareersJob", component: () => import("@/views/CareersJob.vue"), meta: { public: true, title: "Job Opening" } },
 
-  // 404 MUST BE LAST
+  // 404
   { path: "/:pathMatch(.*)*", name: "NotFound", component: () => import("@/views/NotFound.vue") },
 ];
 
@@ -118,39 +118,38 @@ const router = createRouter({
   },
 });
 
+// ============================================
+// ROLE-BASED HOME HELPER
+// ============================================
+function homeForRole(authStore) {
+  if (authStore.isSupplyChain) return "/supply-chain/requests";
+  if (authStore.isFinance)     return "/finance/dashboard";
+  if (authStore.isHR)          return "/hr/dashboard";
+  if (authStore.isCEO)         return "/ceo-dashboard";
+
+  const userRole = authStore.user?.role || "";
+  if (userRole === "staff" || userRole === "cashier") return "/pos";
+
+  if (authStore.isAdmin) return "/dashboard";
+  return "/login";
+}
+
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const isAuthenticated = authStore.checkAuth();
 
-  // Auth guard
   if (to.meta.requiresAuth && !isAuthenticated) {
     return next("/login");
   }
 
-  // Guest guard
   if (to.meta.guest && isAuthenticated) {
-    const userRole = authStore.user?.role || "";
-    if (authStore.isCEO) return next("/ceo-dashboard");
-    if (authStore.isHR) return next("/hr/dashboard");
-    if (authStore.isFinance) return next("/finance/dashboard");
-    if (authStore.isSupplyChain) return next("/supply-chain");
-    if (userRole === "staff" || userRole === "cashier") return next("/pos");
-    return next("/dashboard");
+    return next(homeForRole(authStore));
   }
 
-  // Module guard
   if (to.meta.module && to.path !== "/profile" && to.path !== "/profile/edit") {
     const hasAccess = authStore.hasModule(to.meta.module);
-
     if (!hasAccess) {
-      if (authStore.isCEO) return next("/ceo-dashboard");
-      if (authStore.isHR) return next("/hr/dashboard");
-      if (authStore.isFinance) return next("/finance/dashboard");
-      if (authStore.isSupplyChain) return next("/supply-chain");
-
-      const userRole = authStore.user?.role || "";
-      if (userRole === "staff" || userRole === "cashier") return next("/pos");
-      return next("/dashboard");
+      return next(homeForRole(authStore));
     }
   }
 
