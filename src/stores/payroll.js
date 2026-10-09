@@ -1,4 +1,8 @@
 // src/stores/payroll.js
+// ============================================
+// 💰 Payroll Store — Clean rewrite
+// ============================================
+
 import { defineStore } from 'pinia'
 import api from '@/api/index.js'
 import { useAuthStore } from './auth.js'
@@ -6,248 +10,347 @@ import Swal from 'sweetalert2'
 
 export const usePayrollStore = defineStore('payroll', {
   state: () => ({
-    employees: [],
-    attendanceRecords: [],
-    payrollRecords: [],
-    currentPayroll: null,
-    loading: false,
-    selectedAttendanceIds: [], // NEW: Track selected attendance IDs
-    stats: {
-      totalEmployees: 0,
-      totalDeductions: 0,
-      totalNetPay: 0,
-      presentCount: 0,
-      absentCount: 0,
-      lateCount: 0,
-      onLeaveCount: 0
-    }
+    employees:       [],
+    payrollRecords:  [],
+    currentPayroll:  null,
+    holidays:        [],
+    leaveRequests:   [],
+    leaveTypes:      [],
+    loading:         false,
+    filters: {
+      status: '',
+      year:   '',
+      from:   '',
+      to:     '',
+    },
   }),
 
   getters: {
-    attendanceRate: (state) => {
-      const total = state.attendanceRecords.length
-      if (total === 0) return 0
-      const present = state.attendanceRecords.filter(
-        r => r.status?.toLowerCase() === 'present' || r.status?.toLowerCase() === 'late'
-      ).length
-      return Math.round((present / total) * 100)
-    },
-    
-    // NEW: Get selected attendance records
-    selectedAttendanceRecords: (state) => {
-      return state.attendanceRecords.filter(r => state.selectedAttendanceIds.includes(r.id))
-    },
-    
-    // NEW: Get unique employee IDs from selected attendance
-    selectedEmployeeIds: (state) => {
-      const ids = state.attendanceRecords
-        .filter(r => state.selectedAttendanceIds.includes(r.id))
-        .map(r => r.user_id)
-      return [...new Set(ids)]
-    }
+    pendingCount:        (s) => s.payrollRecords.filter(r => r.status === 'pending').length,
+    financeApprovedCount:(s) => s.payrollRecords.filter(r => r.status === 'finance_approved').length,
+    approvedCount:       (s) => s.payrollRecords.filter(r => r.status === 'approved').length,
+    paidCount:           (s) => s.payrollRecords.filter(r => r.status === 'paid').length,
+
+    totalNetPay:   (s) => s.payrollRecords.reduce((sum, r) => sum + parseFloat(r.net_pay || 0), 0),
+    totalDeductions: (s) => s.payrollRecords.reduce((sum, r) => sum + parseFloat(r.deductions || 0), 0),
   },
 
   actions: {
-    // NEW: Toggle selection
-    toggleSelection(id) {
-      const index = this.selectedAttendanceIds.indexOf(id)
-      if (index > -1) {
-        this.selectedAttendanceIds.splice(index, 1)
-      } else {
-        this.selectedAttendanceIds.push(id)
-      }
-    },
-    
-    // NEW: Select all
-    selectAll() {
-      this.selectedAttendanceIds = this.attendanceRecords.map(r => r.id)
-    },
-    
-    // NEW: Deselect all
-    deselectAll() {
-      this.selectedAttendanceIds = []
-    },
-    
-    // NEW: Clear selection
-    clearSelection() {
-      this.selectedAttendanceIds = []
-    },
-
+    // ============================================
+    // EMPLOYEES
+    // ============================================
     async fetchEmployees() {
       this.loading = true
       try {
-        const response = await api.get('/users.php')
-        if (Array.isArray(response.data)) {
-          this.employees = response.data
-        } else if (response.data && response.data.data) {
-          this.employees = response.data.data
-        }
+        const { data } = await api.get('/users.php')
+        const list = Array.isArray(data) ? data : (data.data || [])
+        this.employees = list
         return this.employees
-      } catch (error) {
-        console.error('Error fetching employees:', error)
-        throw error
+      } catch (e) {
+        console.error('fetchEmployees:', e)
+        throw e
       } finally {
         this.loading = false
       }
     },
 
-    async fetchAttendance(startDate, endDate, employeeId = null) {
+    // ============================================
+    // PAYROLL RECORDS
+    // ============================================
+    async fetchPayrollRecords(filters = {}) {
       this.loading = true
       try {
-        let url = `/attendance.php?start=${startDate}&end=${endDate}`
-        if (employeeId) {
-          url += `&user_id=${employeeId}`
-        }
-        const response = await api.get(url)
-        if (Array.isArray(response.data)) {
-          this.attendanceRecords = response.data
-        } else if (response.data && response.data.data) {
-          this.attendanceRecords = response.data.data
-        }
-        this.updateStats()
-        return this.attendanceRecords
-      } catch (error) {
-        console.error('Error fetching attendance:', error)
-        throw error
+        const params = { ...this.filters, ...filters }
+        Object.keys(params).forEach(k => !params[k] && delete params[k])
+
+        const { data } = await api.get('/payroll.php', { params })
+        const list = Array.isArray(data) ? data : (data.data || [])
+        this.payrollRecords = list
+        return list
+      } catch (e) {
+        console.error('fetchPayrollRecords:', e)
+        throw e
       } finally {
         this.loading = false
       }
     },
 
-    async processPayroll(periodType, startDate, endDate, employeeIds = null) {
+    async fetchPayrollById(id) {
+      try {
+        const { data } = await api.get(`/payroll.php?id=${id}`)
+        if (data.success) {
+          this.currentPayroll = data.data
+          return data.data
+        }
+        return null
+      } catch (e) {
+        console.error('fetchPayrollById:', e)
+        return null
+      }
+    },
+
+    // ============================================
+    // PROCESS PAYROLL
+    // ============================================
+    async processPayroll(periodType, periodStart, periodEnd, employeeIds) {
       this.loading = true
       try {
-        const authStore = useAuthStore()
-        
-        console.log('📤 Processing payroll with params:', {
-          period_type: periodType,
-          period_start: startDate,
-          period_end: endDate,
+        const auth = useAuthStore()
+        const payload = {
+          period_type:  periodType,
+          period_start: periodStart,
+          period_end:   periodEnd,
           employee_ids: employeeIds,
-          created_by: authStore.user?.id || 1
-        })
-
-        const response = await api.post('/payroll_process.php', {
-          period_type: periodType,
-          period_start: startDate,
-          period_end: endDate,
-          employee_ids: employeeIds,
-          created_by: authStore.user?.id || 1
-        })
-
-        console.log('📥 Raw payroll response:', response)
-        console.log('📥 Response data:', response.data)
-
-        // Check if we got a valid response
-        if (!response.data) {
-          return { 
-            success: false, 
-            message: 'No response data received from server',
-            data: null
-          }
+          created_by:   auth.user?.id || 1,
         }
 
-        // If response has success property
-        if (response.data.success !== undefined) {
-          this.currentPayroll = response.data.data
-          this.payrollRecords = response.data.data?.details || []
-          return response.data
+        const { data } = await api.post('/payroll_process.php', payload)
+
+        if (data.success) {
+          await this.fetchPayrollRecords()
         }
-        
-        // If response.data has data property
-        if (response.data.data) {
-          this.currentPayroll = response.data.data
-          this.payrollRecords = response.data.data.details || []
-          return { success: true, data: response.data.data }
-        }
-        
-        // If response.data has details directly
-        if (Array.isArray(response.data.details)) {
-          this.payrollRecords = response.data.details
-          return { success: true, data: response.data }
-        }
-        
-        // If response has no success but has data
-        if (Object.keys(response.data).length > 0) {
-          this.payrollRecords = response.data.details || []
-          return { success: true, data: response.data }
-        }
-        
-        // Fallback
-        return { 
-          success: false, 
-          message: 'Unknown response format',
-          data: null
-        }
-        
-      } catch (error) {
-        console.error('❌ Error processing payroll:', error)
-        console.error('Error details:', error.response?.data)
-        
-        if (error.response?.data) {
-          return {
-            success: false,
-            message: error.response.data.message || 'Server error occurred',
-            data: error.response.data
-          }
-        }
-        
+        return data
+      } catch (e) {
+        console.error('processPayroll:', e)
         return {
           success: false,
-          message: error.message || 'Failed to process payroll',
-          data: null
+          message: e.response?.data?.message || e.message || 'Failed to process payroll',
         }
       } finally {
         this.loading = false
       }
     },
 
-    updateStats() {
-      const records = this.attendanceRecords
-      this.stats.totalEmployees = new Set(records.map(r => r.user_id)).size
-      this.stats.presentCount = records.filter(r => r.status?.toLowerCase() === 'present').length
-      this.stats.absentCount = records.filter(r => r.status?.toLowerCase() === 'absent').length
-      this.stats.lateCount = records.filter(r => r.status?.toLowerCase() === 'late').length
-      this.stats.onLeaveCount = records.filter(r => r.status?.toLowerCase() === 'on_leave').length
-      
-      this.stats.totalDeductions = records.reduce((sum, r) => sum + parseFloat(r.deduction || 0), 0)
-      this.stats.totalNetPay = records.reduce((sum, r) => sum + parseFloat(r.net_pay || 0), 0)
+    // ============================================
+    // APPROVAL ACTIONS
+    // ============================================
+    async financeApprove(id) {
+      return this._approvalAction(id, 'finance_approve', 'Finance approved')
     },
 
-    exportPayrollReport() {
-      if (this.payrollRecords.length === 0) {
+    async hrApprove(id) {
+      return this._approvalAction(id, 'hr_approve', 'HR approved')
+    },
+
+    async markPaid(id) {
+      return this._approvalAction(id, 'mark_paid', 'Marked as paid')
+    },
+
+    async reject(id, reason = 'Rejected') {
+      return this._approvalAction(id, 'reject', 'Rejected', { reason })
+    },
+
+    async _approvalAction(id, action, successMessage, extra = {}) {
+      try {
+        const auth = useAuthStore()
+        const { data } = await api.put(
+          `/payroll.php?id=${id}&action=${action}`,
+          { actor_id: auth.user?.id || 1, ...extra }
+        )
+
+        if (data.success) {
+          await this.fetchPayrollRecords()
+          return { success: true, message: data.message || successMessage, data }
+        }
+        return { success: false, message: data.message || 'Action failed' }
+      } catch (e) {
+        return {
+          success: false,
+          message: e.response?.data?.message || e.message || 'Action failed',
+        }
+      }
+    },
+
+    // ============================================
+    // HOLIDAYS
+    // ============================================
+    async fetchHolidays(year = null) {
+      try {
+        const params = year ? { year } : {}
+        const { data } = await api.get('/holidays.php', { params })
+        this.holidays = Array.isArray(data) ? data : (data.data || [])
+        return this.holidays
+      } catch (e) {
+        console.error('fetchHolidays:', e)
+        return []
+      }
+    },
+
+    async createHoliday(payload) {
+      try {
+        const auth = useAuthStore()
+        const { data } = await api.post('/holidays.php', {
+          ...payload,
+          created_by: auth.user?.id || 1,
+        })
+        if (data.success) await this.fetchHolidays()
+        return data
+      } catch (e) {
+        return {
+          success: false,
+          message: e.response?.data?.message || 'Failed to create holiday',
+        }
+      }
+    },
+
+    async updateHoliday(id, payload) {
+      try {
+        const { data } = await api.put(`/holidays.php?id=${id}`, payload)
+        if (data.success) await this.fetchHolidays()
+        return data
+      } catch (e) {
+        return {
+          success: false,
+          message: e.response?.data?.message || 'Failed to update holiday',
+        }
+      }
+    },
+
+    async deleteHoliday(id) {
+      try {
+        const { data } = await api.delete(`/holidays.php?id=${id}`)
+        if (data.success) await this.fetchHolidays()
+        return data
+      } catch (e) {
+        return {
+          success: false,
+          message: e.response?.data?.message || 'Failed to delete holiday',
+        }
+      }
+    },
+
+    // ============================================
+    // LEAVE REQUESTS
+    // ============================================
+    async fetchLeaveRequests(filters = {}) {
+      try {
+        const { data } = await api.get('/leave_requests.php', { params: filters })
+        this.leaveRequests = Array.isArray(data) ? data : (data.data || [])
+        return this.leaveRequests
+      } catch (e) {
+        console.error('fetchLeaveRequests:', e)
+        return []
+      }
+    },
+
+    async createLeaveRequest(payload) {
+      try {
+        const { data } = await api.post('/leave_requests.php', payload)
+        if (data.success) await this.fetchLeaveRequests()
+        return data
+      } catch (e) {
+        return {
+          success: false,
+          message: e.response?.data?.message || 'Failed to submit leave',
+        }
+      }
+    },
+
+    async approveLeave(id) {
+      return this._leaveAction(id, 'approve');
+    },
+
+    async rejectLeave(id) {
+      return this._leaveAction(id, 'reject');
+    },
+
+    async _leaveAction(id, action) {
+      try {
+        const auth = useAuthStore()
+        const { data } = await api.put(
+          `/leave_requests.php?id=${id}&action=${action}`,
+          { approved_by: auth.user?.id || 1 }
+        )
+        if (data.success) await this.fetchLeaveRequests()
+        return data
+      } catch (e) {
+        return {
+          success: false,
+          message: e.response?.data?.message || `Failed to ${action} leave`,
+        }
+      }
+    },
+
+    // ============================================
+    // SALARY / PROMOTIONS
+    // ============================================
+    async promoteEmployee(userId, newRate, newType, reason) {
+      try {
+        const auth = useAuthStore()
+        const { data } = await api.post('/salary_history.php?action=promote', {
+          user_id:          userId,
+          new_salary_rate:  newRate,
+          new_salary_type:  newType,
+          reason,
+          promoted_by:      auth.user?.id || 1,
+        })
+        return data
+      } catch (e) {
+        return {
+          success: false,
+          message: e.response?.data?.message || 'Failed to promote employee',
+        }
+      }
+    },
+
+    async fetchSalaryHistory(userId) {
+      try {
+        const { data } = await api.get(`/salary_history.php?user_id=${userId}`)
+        return data.data || []
+      } catch (e) {
+        return []
+      }
+    },
+
+    // ============================================
+    // EXPORT
+    // ============================================
+    exportCsv() {
+      const records = this.payrollRecords
+      if (!records.length) {
         Swal.fire({
           icon: 'warning',
           title: 'No Data',
           text: 'No payroll records to export',
-          confirmButtonColor: '#4F46E5'
+          confirmButtonColor: '#4F46E5',
         })
         return
       }
 
-      const headers = ['Employee', 'Department', 'Date', 'Status', 'Salary Rate', 'Deduction', 'Net Pay']
-      const rows = this.payrollRecords.map(r => [
+      const headers = [
+        'Employee', 'Department', 'Period Start', 'Period End',
+        'Days Present', 'Days Late', 'Days Absent',
+        'Basic Salary', 'Holiday Pay', 'Leave Pay',
+        'Deductions', 'Net Pay', 'Status',
+      ]
+
+      const rows = records.map(r => [
         r.full_name || 'Unknown',
         r.department || 'General',
-        r.date || 'N/A',
-        r.status?.toUpperCase() || 'N/A',
-        r.salary_rate || 0,
-        r.deduction || 0,
-        r.net_pay || 0
+        r.period_start || '',
+        r.period_end || '',
+        r.days_present || 0,
+        r.days_late || 0,
+        r.days_absent || 0,
+        r.basic_salary || 0,
+        r.holiday_pay || 0,
+        r.leave_pay || 0,
+        r.deductions || 0,
+        r.net_pay || 0,
+        r.status || '',
       ])
 
-      let csv = headers.join(',') + '\n'
-      rows.forEach(row => {
-        csv += row.join(',') + '\n'
-      })
+      const csv = [headers, ...rows]
+        .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        .join('\n')
 
       const blob = new Blob([csv], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
       a.href = url
       a.download = `payroll_${new Date().toISOString().split('T')[0]}.csv`
       a.click()
-      window.URL.revokeObjectURL(url)
-    }
-  }
+      URL.revokeObjectURL(url)
+    },
+  },
 })
