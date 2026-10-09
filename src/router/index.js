@@ -2,13 +2,35 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 
+// ============================================
+// ROOT REDIRECT HELPER
+// ============================================
+// Not logged in  → /careers (public landing)
+// Logged in      → /dashboard (role-agnostic)
+function rootRedirect() {
+  const token = localStorage.getItem("token");
+  const user  = localStorage.getItem("user");
+  if (token && user) return "/dashboard";
+  return "/careers";
+}
+
 const routes = [
-  // PUBLIC
-  { path: "/", redirect: "/login" },
-  { path: "/login", name: "Login", component: () => import("@/views/Login.vue"), meta: { guest: true } },
+  // ============================================
+  // PUBLIC — smart root redirect
+  // ============================================
+  { path: "/", redirect: rootRedirect },
+  { path: "/login",    name: "Login",    component: () => import("@/views/Login.vue"),    meta: { guest: true } },
   { path: "/register", name: "Register", component: () => import("@/views/Register.vue"), meta: { guest: true } },
 
+  // ============================================
+  // PUBLIC — Careers (no auth)
+  // ============================================
+  { path: "/careers", name: "CareersLanding", component: () => import("@/views/CareersLanding.vue"), meta: { public: true, title: "Careers" } },
+  { path: "/careers/:slug", name: "CareersJob", component: () => import("@/views/CareersJob.vue"), meta: { public: true, title: "Job Opening" } },
+
+  // ============================================
   // ADMIN / CEO
+  // ============================================
   { path: "/dashboard", name: "Dashboard", component: () => import("@/views/Dashboard.vue"), meta: { requiresAuth: true, module: "dashboard" } },
   { path: "/ceo-dashboard", name: "CEODashboard", component: () => import("@/views/CEO/CEODashboard.vue"), meta: { requiresAuth: true, module: "dashboard" } },
 
@@ -81,12 +103,7 @@ const routes = [
   },
 
   // MY ATTENDANCE
-  {
-    path: "/my-attendance",
-    name: "MyAttendance",
-    component: () => import("@/views/MyAttendance.vue"),
-    meta: { requiresAuth: true, module: "my_attendance" },
-  },
+  { path: "/my-attendance", name: "MyAttendance", component: () => import("@/views/MyAttendance.vue"), meta: { requiresAuth: true, module: "my_attendance" } },
 
   // STAFF
   { path: "/staff", name: "Staff", component: () => import("@/views/staff/Staff.vue"), meta: { requiresAuth: true, module: "staff" } },
@@ -101,10 +118,7 @@ const routes = [
   // PAYMENT DEMO
   { path: "/payments/demo", name: "PaymentDemo", component: () => import("@/views/PaymentDemo.vue"), meta: { requiresAuth: true, module: "supplier_payments" } },
 
-  // CAREERS
-  { path: "/careers/:slug", name: "CareersJob", component: () => import("@/views/CareersJob.vue"), meta: { public: true, title: "Job Opening" } },
-
-  // 404
+  // 404 — MUST BE LAST
   { path: "/:pathMatch(.*)*", name: "NotFound", component: () => import("@/views/NotFound.vue") },
 ];
 
@@ -122,6 +136,8 @@ const router = createRouter({
 // ROLE-BASED HOME HELPER
 // ============================================
 function homeForRole(authStore) {
+  // Admin first — otherwise Supply Chain would win for admins
+  if (authStore.isAdmin)       return "/dashboard";
   if (authStore.isSupplyChain) return "/supply-chain/requests";
   if (authStore.isFinance)     return "/finance/dashboard";
   if (authStore.isHR)          return "/hr/dashboard";
@@ -130,7 +146,6 @@ function homeForRole(authStore) {
   const userRole = authStore.user?.role || "";
   if (userRole === "staff" || userRole === "cashier") return "/pos";
 
-  if (authStore.isAdmin) return "/dashboard";
   return "/login";
 }
 
@@ -138,14 +153,22 @@ router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const isAuthenticated = authStore.checkAuth();
 
+  // ---------- PUBLIC routes (careers, payments/return, etc.) ----------
+  if (to.meta.public) {
+    return next();
+  }
+
+  // ---------- Auth guard ----------
   if (to.meta.requiresAuth && !isAuthenticated) {
     return next("/login");
   }
 
+  // ---------- Guest guard ----------
   if (to.meta.guest && isAuthenticated) {
     return next(homeForRole(authStore));
   }
 
+  // ---------- Module guard ----------
   if (to.meta.module && to.path !== "/profile" && to.path !== "/profile/edit") {
     const hasAccess = authStore.hasModule(to.meta.module);
     if (!hasAccess) {

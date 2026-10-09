@@ -14,6 +14,11 @@ export const jobsApi = {
     return data
   },
 
+  // Alias used by CareersLanding.vue
+  async getPublicList() {
+    return this.listPublic()
+  },
+
   async getPublic(slug) {
     const { data } = await api.get(ENDPOINT, { params: { action: 'public', slug } })
     return data
