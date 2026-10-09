@@ -274,7 +274,7 @@
             </div>
           </div>
 
-          <!-- ✅ NEW: Wallet chooser shown ONLY when Source is selected -->
+          <!-- Wallet chooser shown ONLY when Source is selected -->
           <div v-if="forms.pay.method === 'source'" class="form-group">
             <label>Choose Wallet <span class="required">*</span></label>
             <div class="method-grid wallet-grid">
@@ -407,7 +407,7 @@ const forms = ref({
   order:       { supplier_id: '', quantity: 1 },
   unavailable: { reason: '' },
   receive:     { qty: 0, notes: '' },
-  pay:         { method: 'checkout', wallet: 'gcash', notes: '' }, // ✅ wallet added
+  pay:         { method: 'checkout', wallet: 'gcash', notes: '' },
   close:       { rating: 5, comment: '' },
 })
 
@@ -530,7 +530,7 @@ const openReceiveModal = (req) => {
 }
 const openPayModal = (req) => {
   activeRequest.value = req
-  forms.value.pay = { method: 'checkout', wallet: 'gcash', notes: '' } // ✅ reset wallet
+  forms.value.pay = { method: 'checkout', wallet: 'gcash', notes: '' }
   payError.value = null
   modals.value.pay = true
 }
@@ -634,7 +634,10 @@ const submitReceive = async () => {
   finally { busy.value = false }
 }
 
-// ✅ FIXED: sends `method` field when Source is chosen
+// ============================================
+// PAY — sends return_url AND stores return_to in sessionStorage
+// so PaymentsReturn can restore the user's origin context
+// ============================================
 const submitPay = async () => {
   if (payLoading.value) return
   if (!forms.value.pay.method) {
@@ -650,7 +653,13 @@ const submitPay = async () => {
   payError.value = null
   try {
     const isSource = forms.value.pay.method === 'source'
-    const returnUrl = `${window.location.origin}/supply-chain/requests?paid=${activeRequest.value.id}`
+    const requestReturnPath = `/supply-chain/requests?paid=${activeRequest.value.id}`
+    const returnUrl = `${window.location.origin}${requestReturnPath}`
+
+    // Remember where the user came from so PaymentsReturn can restore context
+    try {
+      sessionStorage.setItem('payment_return_to', requestReturnPath)
+    } catch (_) { /* sessionStorage might be blocked — ignore */ }
 
     const payload = {
       kind: isSource ? 'create_source' : 'create_checkout',
@@ -662,9 +671,8 @@ const submitPay = async () => {
       supplier_id: activeRequest.value.supplier_id,
     }
 
-    // ✅ Source requires a specific wallet method
     if (isSource) {
-      payload.method = forms.value.pay.wallet // gcash | maya | grab_pay
+      payload.method = forms.value.pay.wallet
     }
 
     const r = await api.post('/payments.php', payload)
@@ -709,6 +717,7 @@ const submitClose = async () => {
 const handlePaymentReturn = async () => {
   const paidId = route.query.paid
   if (!paidId) return
+
   const req = requests.value.find(r => String(r.id) === String(paidId))
   if (!req || req.status === 'paid') return
 

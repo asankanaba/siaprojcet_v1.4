@@ -61,6 +61,7 @@
         <p class="muted" v-if="payment">Reference: <code>{{ payment.payment_ref }}</code></p>
         <div class="actions">
           <button class="btn primary" @click="goBack">Back to Dashboard</button>
+          <button class="btn" @click="reload">Refresh</button>
         </div>
       </div>
 
@@ -81,10 +82,12 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePaymentsStore } from '@/stores/payments'
+import { useAuthStore } from '@/stores/auth'
 
 const route  = useRoute()
 const router = useRouter()
 const store  = usePaymentsStore()
+const auth   = useAuthStore()
 
 const loading      = ref(true)
 const status       = ref('pending')
@@ -92,11 +95,58 @@ const payment      = ref(null)
 const errorMessage = ref(null)
 const paymentRef   = ref(null)
 
-let stopWatch = null
-
 function formatMoney(v) {
   const n = Number(v || 0)
   return n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// ============================================
+// SMART RETURN — where to send user after done
+// ============================================
+function safeReturnPath() {
+  // 1. Explicit ?return_to= in query (highest priority)
+  const rt = route.query.return_to
+  if (typeof rt === 'string' && rt.startsWith('/') && !rt.startsWith('//')) {
+    return rt
+  }
+
+  // 2. Infer from ?ref= + ?paid= context (Requests flow)
+  const paid = route.query.paid
+  if (paid) return `/supply-chain/requests?paid=${paid}`
+
+  // 3. Infer from referrer (browser history)
+  try {
+    const referer = document.referrer || ''
+    if (referer.includes('/supply-chain/requests')) return '/supply-chain/requests'
+    if (referer.includes('/supply-chain/procurement/payments')) return '/supply-chain/procurement/payments'
+    if (referer.includes('/supply-chain/')) return '/supply-chain'
+    if (referer.includes('/finance/')) return '/finance/dashboard'
+    if (referer.includes('/hr/')) return '/hr/dashboard'
+  } catch (_) { /* ignore */ }
+
+  // 4. Fallback: role-based home
+  if (auth.isSupplyChain) return '/supply-chain/requests'
+  if (auth.isFinance)     return '/finance/dashboard'
+  if (auth.isHR)          return '/hr/dashboard'
+  if (auth.isCEO)         return '/ceo-dashboard'
+  return '/dashboard'
+}
+
+function goBack() {
+  router.push(safeReturnPath())
+}
+
+function viewPayment() {
+  if (payment.value?.id) {
+    router.push(`/supply-chain/procurement/payments?id=${payment.value.id}`)
+  } else {
+    router.push('/supply-chain/procurement/payments')
+  }
+}
+
+function retry() {
+  const rt = safeReturnPath()
+  router.push(rt)
 }
 
 async function load() {
@@ -115,7 +165,6 @@ async function load() {
   }
 
   try {
-    // First, ask the server to sync with PayMongo (fallback if webhook is late)
     const res = await store.refresh(ref_, { byRef: true, sync: false })
     if (res?.success && res.data) {
       payment.value = res.data
@@ -124,7 +173,6 @@ async function load() {
       status.value = urlStatus
     }
 
-    // If still pending, poll a few times (webhook may not have arrived yet)
     if (status.value === 'pending' || status.value === 'processing') {
       store.startPolling({
         ref: ref_,
@@ -135,7 +183,6 @@ async function load() {
         }
       })
 
-      // Hard stop after 2 minutes
       setTimeout(() => {
         store.stopPolling()
         if (status.value === 'pending' || status.value === 'processing') {
@@ -151,28 +198,12 @@ async function load() {
   }
 }
 
-function goBack() {
-  router.push('/')
-}
-
-function viewPayment() {
-  if (payment.value?.id) {
-    router.push(`/supply-chain/procurement/payments?id=${payment.value.id}`)
-  } else {
-    router.push('/supply-chain/procurement/payments')
-  }
-}
-
-function retry() {
-  // Go back to the payments page where the user can start another checkout
-  router.push('/supply-chain/procurement/payments')
-}
+function reload() { load() }
 
 onMounted(load)
 
 onBeforeUnmount(() => {
   store.stopPolling()
-  if (stopWatch) stopWatch()
 })
 </script>
 
