@@ -6,8 +6,13 @@
       <div class="page-content">
         <div class="d-flex justify-content-between align-center mb-4">
           <div>
-            <h4 style="font-weight:700;"><i class="fas fa-plus-circle"></i> {{ isEditing ? 'Edit' : 'Add New' }} Job Post</h4>
-            <p class="text-muted">{{ isEditing ? 'Update existing job posting' : 'Create a new job posting for recruitment' }}</p>
+            <h4 style="font-weight:700;">
+              <i class="fas fa-plus-circle"></i>
+              {{ isEditing ? 'Edit' : 'Add New' }} Job Post
+            </h4>
+            <p class="text-muted">
+              {{ isEditing ? 'Update existing job posting' : 'Create a new job posting for recruitment' }}
+            </p>
           </div>
           <span class="badge" style="background:#EC4899;color:white;padding:0.5rem 1rem;">
             <i class="fas fa-users-cog"></i> HR
@@ -82,7 +87,8 @@
               <div class="col-md-12">
                 <div class="d-flex gap-2">
                   <button type="submit" class="btn btn-primary" :disabled="submitting">
-                    <i class="fas fa-paper-plane"></i> {{ submitting ? 'Saving...' : (isEditing ? 'Update Job' : 'Publish Job') }}
+                    <i class="fas fa-paper-plane"></i>
+                    {{ submitting ? 'Saving...' : (isEditing ? 'Update Job' : 'Publish Job') }}
                   </button>
                   <button type="button" class="btn btn-secondary" @click="goBack">Cancel</button>
                 </div>
@@ -96,12 +102,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Sidebar from '@/components/common/Sidebar.vue'
 import Navbar from '@/components/common/Navbar.vue'
-import { showSuccess, showError, showLoading, closeLoading } from '@/utils/security'
+import { showError, showLoading, closeLoading } from '@/utils/security'
 import api from '@/api'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
@@ -125,9 +132,8 @@ const loadJobPost = async () => {
     isEditing.value = true
     try {
       const response = await api.get(`/jobs.php?id=${id}`)
-      if (response.data) {
-        form.value = { ...response.data }
-      }
+      const payload = response.data?.data ?? response.data
+      if (payload) form.value = { ...payload }
     } catch (error) {
       showError('Error', 'Failed to load job post')
     }
@@ -143,18 +149,47 @@ const submitJobPost = async () => {
   submitting.value = true
   try {
     showLoading(isEditing.value ? 'Updating job...' : 'Publishing job...')
-    
+
     let response
     if (isEditing.value) {
       response = await api.put(`/jobs.php?id=${form.value.id}`, form.value)
     } else {
       response = await api.post('/jobs.php', form.value)
     }
-    
+
     closeLoading()
+
     if (response.data.success) {
-      showSuccess('Success!', isEditing.value ? 'Job updated successfully!' : 'Job posted successfully!')
-      // ✅ FIXED: Changed from '/hr/job-posts' (doesn't exist) to '/hr/jobs' (correct route)
+      const newJobId = response.data.id
+      const wasNew = !isEditing.value
+
+      // ---------- NEW POST → offer LinkedIn share ----------
+      if (wasNew && newJobId) {
+        const choice = await Swal.fire({
+          icon: 'success',
+          title: 'Job Posted!',
+          html: `
+            <p>Your job post is now live.</p>
+            <p style="margin-top:.75rem;font-size:.9rem;color:#6b7280;">
+              Share it on LinkedIn to reach more candidates?
+            </p>
+          `,
+          showCancelButton: true,
+          confirmButtonText: '<i class="fab fa-linkedin"></i> Share on LinkedIn',
+          cancelButtonText: 'Skip for now',
+          confirmButtonColor: '#0A66C2',
+          cancelButtonColor: '#6B7280',
+          reverseButtons: true,
+        })
+
+        if (choice.isConfirmed) {
+          // Redirect to job list with ?share=N — list will auto-open the modal
+          router.push({ path: '/hr/jobs', query: { share: newJobId } })
+          return
+        }
+      }
+
+      // ---------- Default: back to list ----------
       router.push('/hr/jobs')
     } else {
       showError('Error', response.data.message || 'Failed to save job')
@@ -177,17 +212,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 0.375rem;
-  font-size: 0.875rem;
-}
-
+.form-group { margin-bottom: 1rem; }
+.form-label { display: block; font-weight: 600; margin-bottom: 0.375rem; font-size: 0.875rem; }
 .form-control {
   width: 100%;
   padding: 0.625rem 0.875rem;
@@ -199,67 +225,19 @@ onMounted(() => {
   color: var(--text-light);
   font-family: inherit;
 }
-
-body.dark-mode .form-control {
-  background: #2D3748;
-  border-color: var(--border-dark);
-  color: var(--text-dark);
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(79,70,229,0.1);
-}
-
-body.dark-mode .form-control:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(79,70,229,0.2);
-}
-
-textarea.form-control {
-  resize: vertical;
-  min-height: 60px;
-}
-
+body.dark-mode .form-control { background: #2D3748; border-color: var(--border-dark); color: var(--text-dark); }
+.form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(79,70,229,0.1); }
+body.dark-mode .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(79,70,229,0.2); }
+textarea.form-control { resize: vertical; min-height: 60px; }
 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1.25rem;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.5rem 1.25rem; border: none; border-radius: 8px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem;
 }
-
-.btn-primary {
-  background: #4F46E5;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #4338CA;
-}
-
-.btn-secondary {
-  background: #E5E7EB;
-  color: #1F2937;
-}
-
-.btn-secondary:hover {
-  background: #D1D5DB;
-}
-
-body.dark-mode .btn-secondary {
-  background: #374151;
-  color: #E2E8F0;
-}
-
-body.dark-mode .btn-secondary:hover {
-  background: #4B5563;
-}
+.btn-primary { background: #4F46E5; color: white; }
+.btn-primary:hover:not(:disabled) { background: #4338CA; }
+.btn-secondary { background: #E5E7EB; color: #1F2937; }
+.btn-secondary:hover { background: #D1D5DB; }
+body.dark-mode .btn-secondary { background: #374151; color: #E2E8F0; }
+body.dark-mode .btn-secondary:hover { background: #4B5563; }
 </style>
