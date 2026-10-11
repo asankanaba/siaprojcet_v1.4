@@ -1,8 +1,5 @@
 <template>
   <div class="po-page">
-    <!-- ============================================================ -->
-    <!-- PAGE HEADER -->
-    <!-- ============================================================ -->
     <header class="po-head">
       <div class="po-head-left">
         <h1>
@@ -24,9 +21,6 @@
       </div>
     </header>
 
-    <!-- ============================================================ -->
-    <!-- STAT TILES -->
-    <!-- ============================================================ -->
     <section class="po-stats">
       <div class="po-tile">
         <span class="po-tile-label">Total Orders</span>
@@ -60,9 +54,6 @@
       </div>
     </section>
 
-    <!-- ============================================================ -->
-    <!-- TOOLBAR -->
-    <!-- ============================================================ -->
     <section class="po-toolbar">
       <div class="po-search">
         <span class="po-search-icon">🔍</span>
@@ -96,9 +87,6 @@
       </label>
     </section>
 
-    <!-- ============================================================ -->
-    <!-- TABLE -->
-    <!-- ============================================================ -->
     <section class="po-table-wrap">
       <div v-if="loading" class="po-empty">
         <div class="po-spinner"></div>
@@ -165,7 +153,6 @@
               </span>
             </td>
             <td class="center actions-cell">
-              <!-- Pay now -->
               <button
                 v-if="po.can_pay"
                 class="po-icon-btn po-icon-pay"
@@ -175,7 +162,6 @@
                 💳
               </button>
 
-              <!-- Blocked pay -->
               <button
                 v-else-if="po.payment_status !== 'paid'"
                 class="po-icon-btn po-icon-disabled"
@@ -185,17 +171,6 @@
                 🚫
               </button>
 
-              <!-- Share link -->
-              <button
-                v-if="po.can_pay"
-                class="po-icon-btn po-icon-link"
-                title="Create payment link to share"
-                @click="openLink(po)"
-              >
-                🔗
-              </button>
-
-              <!-- View details -->
               <button
                 class="po-icon-btn po-icon-view"
                 title="View details"
@@ -204,7 +179,6 @@
                 👁
               </button>
 
-              <!-- Delete (blocked if any payment exists) -->
               <button
                 class="po-icon-btn po-icon-delete"
                 title="Delete"
@@ -219,9 +193,7 @@
       </table>
     </section>
 
-    <!-- ============================================================ -->
     <!-- DETAIL DRAWER -->
-    <!-- ============================================================ -->
     <Teleport to="body">
       <div v-if="detail" class="po-drawer-backdrop" @click.self="closeDetail">
         <aside class="po-drawer">
@@ -236,7 +208,6 @@
           </header>
 
           <div class="po-drawer-body">
-            <!-- Amount summary -->
             <div class="po-drawer-section">
               <div class="po-drawer-amounts">
                 <div>
@@ -260,17 +231,11 @@
                 <span class="po-pill" :class="`po-pill-lifecycle-${detail.lifecycle_status}`">
                   {{ lifecycleLabel(detail.lifecycle_status) }}
                 </span>
-                <span v-if="detail.days_overdue > 0 && detail.payment_status !== 'paid'" class="po-overdue">
-                  {{ detail.days_overdue }} days overdue
-                </span>
               </div>
 
               <div class="po-drawer-cta" v-if="detail.can_pay">
                 <button class="po-btn po-btn-primary" @click="openPay(detail)">
                   💳 Pay ₱{{ formatMoney(detail.balance_due) }}
-                </button>
-                <button class="po-btn po-btn-ghost" @click="openLink(detail)">
-                  🔗 Share link
                 </button>
               </div>
               <div v-else-if="detail.payment_blocker" class="po-drawer-blocked">
@@ -278,7 +243,6 @@
               </div>
             </div>
 
-            <!-- Meta grid -->
             <div class="po-drawer-section">
               <h3>Details</h3>
               <dl class="po-meta">
@@ -288,12 +252,9 @@
                 <dt>Payment terms</dt><dd>{{ detail.payment_terms || '—' }}</dd>
                 <dt>Ordered by</dt><dd>{{ detail.ordered_by_name || '—' }}</dd>
                 <dt>Qty</dt><dd>{{ detail.quantity }} × ₱{{ formatMoney(detail.unit_price) }}</dd>
-                <dt v-if="detail.notes">Notes</dt>
-                <dd v-if="detail.notes" class="po-notes">{{ detail.notes }}</dd>
               </dl>
             </div>
 
-            <!-- Payments -->
             <div class="po-drawer-section">
               <h3>Payments ({{ detail.payments?.length || 0 }})</h3>
               <div v-if="!detail.payments?.length" class="muted small">No payments recorded yet.</div>
@@ -306,16 +267,10 @@
                     </div>
                     <div class="po-list-amount">₱{{ formatMoney(p.amount) }}</div>
                   </div>
-                  <div class="po-list-meta">
-                    <span class="po-pill" :class="`po-pill-${p.status}`">{{ p.status }}</span>
-                    <span class="muted">{{ formatDate(p.created_at) }}</span>
-                    <span class="muted" v-if="p.paid_by_name">by {{ p.paid_by_name }}</span>
-                  </div>
                 </li>
               </ul>
             </div>
 
-            <!-- Deliveries (GRN) -->
             <div class="po-drawer-section">
               <h3>Deliveries ({{ detail.deliveries?.length || 0 }})</h3>
               <div v-if="!detail.deliveries?.length" class="muted small">No goods receipts yet.</div>
@@ -328,38 +283,106 @@
                     </div>
                     <div class="po-list-amount">{{ d.qty_received }} / {{ d.qty_ordered }}</div>
                   </div>
-                  <div class="po-list-meta">
-                    <span class="muted">{{ formatDate(d.received_at) }}</span>
-                    <span v-if="d.condition_notes" class="muted">· {{ d.condition_notes }}</span>
-                  </div>
                 </li>
               </ul>
-            </div>
-
-            <!-- Invoice -->
-            <div class="po-drawer-section" v-if="detail.invoice">
-              <h3>Supplier Invoice</h3>
-              <dl class="po-meta">
-                <dt>Number</dt><dd>{{ detail.invoice.invoice_number }}</dd>
-                <dt>Date</dt><dd>{{ formatDate(detail.invoice.invoice_date) }}</dd>
-                <dt>Due</dt><dd>{{ formatDate(detail.invoice.due_date) }}</dd>
-                <dt>Total</dt><dd>₱{{ formatMoney(detail.invoice.total) }}</dd>
-                <dt>Status</dt>
-                <dd>
-                  <span class="po-pill" :class="`po-pill-${detail.invoice.status === 'paid' ? 'paid' : 'unpaid'}`">
-                    {{ detail.invoice.status }}
-                  </span>
-                </dd>
-              </dl>
             </div>
           </div>
         </aside>
       </div>
     </Teleport>
 
-    <!-- ============================================================ -->
-    <!-- PAYMONGO MODAL -->
-    <!-- ============================================================ -->
+    <!-- CREATE MODAL -->
+    <Teleport to="body">
+      <div v-if="showCreate" class="po-drawer-backdrop" @click.self="closeCreate">
+        <div class="po-create-modal">
+          <header class="po-drawer-head">
+            <h2>📦 New Purchase Order</h2>
+            <button class="po-icon-btn" @click="closeCreate">✕</button>
+          </header>
+
+          <div class="po-drawer-body">
+            <div v-if="createError" class="po-drawer-blocked" style="margin-bottom:1rem;">
+              ⚠️ {{ createError }}
+            </div>
+
+            <div class="po-form-group">
+              <label>From Approved Requisition (optional)</label>
+              <select v-model="newPO.requisition_id" @change="onReqSelect" class="po-select" style="width:100%">
+                <option value="">— No requisition (direct PO) —</option>
+                <option v-for="r in approvedReqs" :key="r.id" :value="r.id">
+                  {{ r.req_number }} — {{ r.product_name || r.product_name_real }} (₱{{ formatMoney(r.estimated_total) }})
+                </option>
+              </select>
+            </div>
+
+            <div class="po-form-group">
+              <label>Product *</label>
+              <select v-model="newPO.product_id" class="po-select" style="width:100%">
+                <option value="">— Select product —</option>
+                <option v-for="p in productList" :key="p.id" :value="p.id">
+                  {{ p.name }} (stock: {{ p.stock }})
+                </option>
+              </select>
+            </div>
+
+            <div class="po-form-group">
+              <label>Supplier *</label>
+              <select v-model="newPO.supplier_id" class="po-select" style="width:100%">
+                <option value="">— Select supplier —</option>
+                <option v-for="s in supplierList" :key="s.id" :value="s.id">
+                  {{ s.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="po-form-row">
+              <div class="po-form-group">
+                <label>Quantity *</label>
+                <input v-model.number="newPO.quantity" type="number" min="1" class="po-input" />
+              </div>
+              <div class="po-form-group">
+                <label>Unit Price (₱) *</label>
+                <input v-model.number="newPO.unit_price" type="number" step="0.01" min="0" class="po-input" />
+              </div>
+            </div>
+
+            <div class="po-form-group">
+              <label>Total</label>
+              <div class="po-total-preview">₱{{ formatMoney(newPOTotal) }}</div>
+            </div>
+
+            <div class="po-form-group">
+              <label>Expected Delivery</label>
+              <input v-model="newPO.expected_delivery" type="date" class="po-input" />
+            </div>
+
+            <div class="po-form-group">
+              <label>Payment Terms</label>
+              <select v-model="newPO.payment_terms" class="po-select" style="width:100%">
+                <option value="Net 15">Net 15</option>
+                <option value="Net 30">Net 30</option>
+                <option value="Net 45">Net 45</option>
+                <option value="Net 60">Net 60</option>
+                <option value="COD">Cash on Delivery</option>
+              </select>
+            </div>
+
+            <div class="po-form-group">
+              <label>Notes</label>
+              <textarea v-model="newPO.notes" rows="3" class="po-input"></textarea>
+            </div>
+          </div>
+
+          <footer style="padding:1rem 1.25rem; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:.5rem;">
+            <button class="po-btn po-btn-ghost" @click="closeCreate" :disabled="creating">Cancel</button>
+            <button class="po-btn po-btn-primary" @click="submitCreate" :disabled="creating">
+              {{ creating ? 'Creating…' : 'Create PO' }}
+            </button>
+          </footer>
+        </div>
+      </div>
+    </Teleport>
+
     <PayMongoCheckout
       ref="checkoutRef"
       :mode="checkoutMode"
@@ -371,7 +394,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import Swal from 'sweetalert2'
 import api from '@/api/index'
 import PayMongoCheckout from '@/components/common/PayMongoCheckout.vue'
@@ -393,6 +416,31 @@ const filters = reactive({
 
 const checkoutRef  = ref(null)
 const checkoutMode = ref('checkout')
+
+// ============================================================
+// CREATE MODAL STATE
+// ============================================================
+const showCreate   = ref(false)
+const creating     = ref(false)
+const createError  = ref(null)
+const approvedReqs = ref([])
+const supplierList = ref([])
+const productList  = ref([])
+
+const newPO = reactive({
+  requisition_id:    '',
+  product_id:        '',
+  supplier_id:       '',
+  quantity:          1,
+  unit_price:        0,
+  expected_delivery: '',
+  payment_terms:     'Net 30',
+  notes:             ''
+})
+
+const newPOTotal = computed(() =>
+  (Number(newPO.quantity) || 0) * (Number(newPO.unit_price) || 0)
+)
 
 // ============================================================
 // LOADING
@@ -424,9 +472,7 @@ async function loadStats() {
   try {
     const res = await api.get('/purchase_orders.php', { params: { action: 'summary' } })
     Object.assign(stats, res.data?.data || {})
-  } catch (e) {
-    // non-fatal
-  }
+  } catch (e) {}
 }
 
 function reload() {
@@ -454,20 +500,100 @@ function sort(field) {
 // DETAIL DRAWER
 // ============================================================
 async function openDetail(po) {
-  detail.value = po  // show immediately from list data
+  detail.value = po
   try {
     const res = await api.get('/purchase_orders.php', { params: { id: po.id } })
     if (res.data?.success) detail.value = res.data.data
-  } catch (e) {
-    // keep list data
-  }
+  } catch (e) {}
 }
 function closeDetail() {
   detail.value = null
 }
 
 // ============================================================
-// PAY NOW / SHARE LINK
+// CREATE MODAL
+// ============================================================
+async function openCreate() {
+  Object.assign(newPO, {
+    requisition_id: '', product_id: '', supplier_id: '',
+    quantity: 1, unit_price: 0, expected_delivery: '',
+    payment_terms: 'Net 30', notes: ''
+  })
+  createError.value = null
+  showCreate.value  = true
+
+  try {
+    const [reqRes, supRes, prodRes] = await Promise.all([
+      api.get('/requisitions.php', { params: { status: 'approved' } }),
+      api.get('/suppliers.php',    { params: { status: 'active' } }),
+      api.get('/products.php',     { params: { status: 'active' } })
+    ])
+    approvedReqs.value = reqRes.data?.data || []
+    supplierList.value = supRes.data?.data || []
+    productList.value  = prodRes.data?.data || []
+  } catch (e) {
+    createError.value = 'Could not load dropdowns: ' + (e?.message || 'unknown')
+  }
+}
+
+function closeCreate() {
+  showCreate.value = false
+  createError.value = null
+}
+
+function onReqSelect() {
+  const r = approvedReqs.value.find(x => String(x.id) === String(newPO.requisition_id))
+  if (!r) return
+  newPO.product_id = r.product_id || ''
+  newPO.quantity   = r.quantity   || 1
+  newPO.unit_price = Number(r.estimated_unit_cost) || 0
+}
+
+async function submitCreate() {
+  createError.value = null
+
+  if (!newPO.product_id)                     return createError.value = 'Select a product'
+  if (!newPO.supplier_id)                    return createError.value = 'Select a supplier'
+  if (!newPO.quantity || newPO.quantity < 1) return createError.value = 'Quantity must be ≥ 1'
+  if (!newPO.unit_price || newPO.unit_price <= 0) return createError.value = 'Unit price must be > 0'
+
+  creating.value = true
+  try {
+    const payload = {
+      requisition_id:    newPO.requisition_id || null,
+      product_id:        Number(newPO.product_id),
+      supplier_id:       Number(newPO.supplier_id),
+      quantity:          Number(newPO.quantity),
+      unit_price:        Number(newPO.unit_price),
+      expected_delivery: newPO.expected_delivery || null,
+      payment_terms:     newPO.payment_terms,
+      notes:             newPO.notes || null
+    }
+
+    const res = await api.post('/purchase_orders.php', payload)
+    if (!res.data?.success) throw new Error(res.data?.message || 'Create failed')
+
+    Swal.fire({
+      icon: 'success',
+      title: 'PO Created',
+      text: res.data.po_number,
+      timer: 1500,
+      showConfirmButton: false,
+      background: 'rgba(15,23,42,.95)',
+      color: '#f1f5f9'
+    })
+
+    closeCreate()
+    reload()
+  } catch (e) {
+    createError.value = e?.response?.data?.message || e?.message || 'Create failed'
+  } finally {
+    creating.value = false
+  }
+}
+
+// ============================================================
+// PAY / DELETE
 // ============================================================
 function openPay(po) {
   checkoutMode.value = 'checkout'
@@ -485,26 +611,7 @@ function openPay(po) {
   })
 }
 
-function openLink(po) {
-  checkoutMode.value = 'link'
-  const meta = po.payment_meta || {
-    po_id: po.id,
-    supplier_id: po.supplier_id,
-    amount: Number(po.balance_due),
-    description: `Payment for PO ${po.po_number}`
-  }
-  checkoutRef.value?.open({
-    supplier_id: meta.supplier_id,
-    amount: meta.amount,
-    description: meta.description,
-    po_id: meta.po_id
-  })
-}
-
-function onCheckoutCreated(res) {
-  // refresh list shortly after (checkout session created or link generated)
-  setTimeout(reload, 800)
-}
+function onCheckoutCreated() { setTimeout(reload, 800) }
 
 function onCheckoutError(err) {
   Swal.fire({
@@ -516,24 +623,7 @@ function onCheckoutError(err) {
   })
 }
 
-function onCheckoutClosed() {
-  reload()
-}
-
-// ============================================================
-// CREATE / DELETE (kept from your existing flows)
-// ============================================================
-function openCreate() {
-  // if you already have a New Order modal, replace this with a call to it
-  // for now we just show an info alert so nothing breaks
-  Swal.fire({
-    icon: 'info',
-    title: 'New Order',
-    text: 'Create PO modal — wire this to your existing form.',
-    background: 'rgba(15,23,42,.95)',
-    color: '#f1f5f9'
-  })
-}
+function onCheckoutClosed() { reload() }
 
 async function confirmDelete(po) {
   const ok = await Swal.fire({
@@ -551,21 +641,15 @@ async function confirmDelete(po) {
   try {
     await api.delete('/purchase_orders.php', { params: { id: po.id } })
     Swal.fire({
-      icon: 'success',
-      title: 'Deleted',
-      timer: 1200,
-      showConfirmButton: false,
-      background: 'rgba(15,23,42,.95)',
-      color: '#f1f5f9'
+      icon: 'success', title: 'Deleted', timer: 1200, showConfirmButton: false,
+      background: 'rgba(15,23,42,.95)', color: '#f1f5f9'
     })
     reload()
   } catch (e) {
     Swal.fire({
-      icon: 'error',
-      title: 'Cannot delete',
+      icon: 'error', title: 'Cannot delete',
       text: e?.response?.data?.message || e?.message || 'Delete failed',
-      background: 'rgba(15,23,42,.95)',
-      color: '#f1f5f9'
+      background: 'rgba(15,23,42,.95)', color: '#f1f5f9'
     })
   }
 }
@@ -588,704 +672,330 @@ function paymentLabel(s) {
 }
 function lifecycleLabel(s) {
   return {
-    draft: 'Draft',
-    ordered: 'Ordered',
-    acknowledged: 'Acknowledged',
-    shipped: 'Shipped',
-    delivered: 'Delivered',
-    grn_posted: 'GRN Posted',
-    invoiced: 'Invoiced',
-    matched: 'Matched',
-    paid: 'Paid',
-    closed: 'Closed',
-    cancelled: 'Cancelled'
+    draft: 'Draft', ordered: 'Ordered', acknowledged: 'Acknowledged',
+    shipped: 'Shipped', delivered: 'Delivered', grn_posted: 'GRN Posted',
+    invoiced: 'Invoiced', matched: 'Matched', paid: 'Paid',
+    closed: 'Closed', cancelled: 'Cancelled'
   }[s] || s || '—'
 }
 
-// ============================================================
-// LIFECYCLE
-// ============================================================
 onMounted(reload)
 </script>
 
 <style scoped>
-/* ============================================================
-   PAGE
-   ============================================================ */
-.po-page {
-  padding: 1.5rem;
-  color: #1e293b;
-  font-size: 0.9rem;
-}
-
-body.dark-mode .po-page {
-  color: #e2e8f0;
-}
+.po-page { padding: 1.5rem; color: #1e293b; font-size: 0.9rem; }
+body.dark-mode .po-page { color: #e2e8f0; }
 
 .po-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 1rem; margin-bottom: 1.5rem;
 }
 .po-head h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  margin: 0; font-size: 1.5rem; font-weight: 700; color: #0f172a;
+  display: flex; align-items: center; gap: 0.5rem;
 }
 body.dark-mode .po-head h1 { color: #f1f5f9; }
-
 .po-head-icon { font-size: 1.3rem; }
-.po-head-sub {
-  margin: 0.35rem 0 0;
-  font-size: 0.85rem;
-  color: #64748b;
-}
+.po-head-sub { margin: 0.35rem 0 0; font-size: 0.85rem; color: #64748b; }
 body.dark-mode .po-head-sub { color: #94a3b8; }
+.po-head-right { display: flex; gap: 0.5rem; align-items: center; }
 
-.po-head-right {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-/* ============================================================
-   BUTTONS
-   ============================================================ */
 .po-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1.1rem;
-  border-radius: 10px;
-  font-weight: 500;
-  font-size: 0.85rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-  font-family: inherit;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.6rem 1.1rem; border-radius: 10px; font-weight: 500;
+  font-size: 0.85rem; cursor: pointer; border: 1px solid transparent;
+  transition: all 0.15s ease; font-family: inherit;
 }
-.po-btn-primary {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
-}
+.po-btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
 .po-btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
-
 .po-btn-ghost {
-  background: #ffffff;
-  color: #334155;
-  border-color: #e2e8f0;
+  background: #ffffff; color: #334155; border-color: #e2e8f0;
 }
 .po-btn-ghost:hover:not(:disabled) { background: #f8fafc; }
-
 body.dark-mode .po-btn-ghost {
-  background: rgba(255, 255, 255, 0.06);
-  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.06); color: #e2e8f0;
   border-color: rgba(167, 139, 250, 0.18);
 }
-body.dark-mode .po-btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-}
-
 .po-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .spinning { display: inline-block; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg) } }
 
-/* ============================================================
-   STAT TILES
-   ============================================================ */
 .po-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem; margin-bottom: 1.25rem;
 }
 .po-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  display: flex; flex-direction: column; gap: 0.25rem;
+  padding: 0.9rem 1rem; border-radius: 14px; background: #ffffff;
+  border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
-
 body.dark-mode .po-tile {
   background: rgba(26, 22, 48, 0.55);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
   border-color: rgba(167, 139, 250, 0.18);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(124, 58, 237, 0.08);
 }
-
 .po-tile-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
   color: #64748b;
 }
 body.dark-mode .po-tile-label { color: #94a3b8; }
-
-.po-tile-value {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #0f172a;
-}
+.po-tile-value { font-size: 1.35rem; font-weight: 700; color: #0f172a; }
 body.dark-mode .po-tile-value { color: #f1f5f9; }
-
-.po-tile-value.warn    { color: #d97706; }
-.po-tile-value.info    { color: #2563eb; }
-.po-tile-value.ok      { color: #16a34a; }
+.po-tile-value.warn { color: #d97706; }
+.po-tile-value.info { color: #2563eb; }
+.po-tile-value.ok { color: #16a34a; }
 .po-tile-value.success { color: #16a34a; }
-.po-tile-value.danger  { color: #dc2626; }
+.po-tile-value.danger { color: #dc2626; }
+.po-tile-sub { font-size: 0.7rem; color: #94a3b8; }
 
-body.dark-mode .po-tile-value.warn    { color: #facc15; }
-body.dark-mode .po-tile-value.info    { color: #60a5fa; }
-body.dark-mode .po-tile-value.ok      { color: #4ade80; }
-body.dark-mode .po-tile-value.success { color: #22c55e; }
-body.dark-mode .po-tile-value.danger  { color: #f87171; }
-
-.po-tile-sub {
-  font-size: 0.7rem;
-  color: #94a3b8;
-}
-
-/* ============================================================
-   TOOLBAR
-   ============================================================ */
 .po-toolbar {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-bottom: 1rem;
+  display: flex; gap: 0.6rem; flex-wrap: wrap;
+  align-items: center; margin-bottom: 1rem;
 }
-.po-search {
-  position: relative;
-  flex: 1 1 240px;
-  min-width: 200px;
-}
+.po-search { position: relative; flex: 1 1 240px; min-width: 200px; }
 .po-search input {
-  width: 100%;
-  padding: 0.6rem 0.8rem 0.6rem 2.2rem;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: #0f172a;
-  font-size: 0.85rem;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s;
+  width: 100%; padding: 0.6rem 0.8rem 0.6rem 2.2rem;
+  border-radius: 10px; background: #ffffff; border: 1px solid #e2e8f0;
+  color: #0f172a; font-size: 0.85rem; font-family: inherit; outline: none;
 }
-.po-search input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
 body.dark-mode .po-search input {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(167, 139, 250, 0.2);
-  color: #e2e8f0;
+  border-color: rgba(167, 139, 250, 0.2); color: #e2e8f0;
 }
-body.dark-mode .po-search input:focus {
-  border-color: rgba(167, 139, 250, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
-}
-body.dark-mode .po-search input::placeholder { color: #64748b; }
-
 .po-search-icon {
-  position: absolute;
-  top: 50%;
-  left: 0.7rem;
-  transform: translateY(-50%);
-  font-size: 0.85rem;
-  opacity: 0.5;
+  position: absolute; top: 50%; left: 0.7rem;
+  transform: translateY(-50%); font-size: 0.85rem; opacity: 0.5;
 }
 .po-select {
-  padding: 0.6rem 0.8rem;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: #0f172a;
-  font-size: 0.85rem;
-  font-family: inherit;
-  outline: none;
-  cursor: pointer;
+  padding: 0.6rem 0.8rem; border-radius: 10px; background: #ffffff;
+  border: 1px solid #e2e8f0; color: #0f172a; font-size: 0.85rem;
+  font-family: inherit; outline: none; cursor: pointer;
 }
-.po-select:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
 body.dark-mode .po-select {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(167, 139, 250, 0.2);
-  color: #e2e8f0;
+  border-color: rgba(167, 139, 250, 0.2); color: #e2e8f0;
 }
-body.dark-mode .po-select:focus {
-  border-color: rgba(167, 139, 250, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
-}
-body.dark-mode .po-select option {
-  background: #1a1630;
-  color: #e2e8f0;
-}
-
 .po-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  font-size: 0.8rem;
-  color: #334155;
-  cursor: pointer;
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.55rem 0.75rem; border-radius: 10px; background: #ffffff;
+  border: 1px solid #e2e8f0; font-size: 0.8rem; color: #334155; cursor: pointer;
 }
 body.dark-mode .po-toggle {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(167, 139, 250, 0.2);
-  color: #cbd5e1;
+  border-color: rgba(167, 139, 250, 0.2); color: #cbd5e1;
 }
 
-/* ============================================================
-   TABLE
-   ============================================================ */
 .po-table-wrap {
-  border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  border-radius: 16px; background: #ffffff; border: 1px solid #e2e8f0;
+  overflow: hidden; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
-
 body.dark-mode .po-table-wrap {
   background: rgba(26, 22, 48, 0.55);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
   border-color: rgba(167, 139, 250, 0.18);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(124, 58, 237, 0.08);
 }
-
-.po-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-}
-.po-table thead {
-  background: #f8fafc;
-}
-body.dark-mode .po-table thead {
-  background: rgba(255, 255, 255, 0.04);
-}
-
+.po-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.po-table thead { background: #f8fafc; }
+body.dark-mode .po-table thead { background: rgba(255, 255, 255, 0.04); }
 .po-table th {
-  text-align: left;
-  padding: 0.75rem 0.9rem;
-  font-weight: 600;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #475569;
-  white-space: nowrap;
+  text-align: left; padding: 0.75rem 0.9rem; font-weight: 600;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #475569; white-space: nowrap;
 }
 body.dark-mode .po-table th { color: #94a3b8; }
-
 .po-table th.num { text-align: right; }
 .po-table th.center { text-align: center; }
 .po-table th.sortable { cursor: pointer; user-select: none; }
-.po-table th.sortable:hover { color: #0f172a; }
-body.dark-mode .po-table th.sortable:hover { color: #f1f5f9; }
-
-.sort-arrow { margin-left: 0.3rem; font-size: 0.65rem; opacity: 0.8; }
-
 .po-table td {
-  padding: 0.75rem 0.9rem;
-  border-top: 1px solid #f1f5f9;
-  color: #1e293b;
-  vertical-align: middle;
+  padding: 0.75rem 0.9rem; border-top: 1px solid #f1f5f9;
+  color: #1e293b; vertical-align: middle;
 }
 body.dark-mode .po-table td {
-  border-top-color: rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
+  border-top-color: rgba(255, 255, 255, 0.05); color: #e2e8f0;
 }
-
 .po-table td.num { text-align: right; }
 .po-table td.center { text-align: center; }
 .po-table tbody tr:hover { background: #f8fafc; }
 body.dark-mode .po-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
-
 .po-table tbody tr.overdue { background: #fef2f2; }
 body.dark-mode .po-table tbody tr.overdue { background: rgba(239, 68, 68, 0.05); }
-
 .actions-cell { white-space: nowrap; }
 
-/* ============================================================
-   ICON BUTTONS
-   ============================================================ */
 .po-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  margin: 0 2px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #334155;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.12s ease;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; margin: 0 2px; border-radius: 8px;
+  border: 1px solid #e2e8f0; background: #ffffff; color: #334155;
+  cursor: pointer; font-size: 0.85rem;
 }
-.po-icon-btn:hover:not(:disabled) {
-  background: #eef2ff;
-  border-color: #a5b4fc;
+body.dark-mode .po-icon-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(167, 139, 250, 0.18); color: #cbd5e1;
 }
 .po-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.po-icon-pay:hover  { background: #ecfdf5 !important; border-color: #6ee7b7 !important; }
-.po-icon-link:hover { background: #eef2ff !important; border-color: #a5b4fc !important; }
-.po-icon-delete:hover { background: #fef2f2 !important; border-color: #fca5a5 !important; }
-
-body.dark-mode .po-icon-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(167, 139, 250, 0.18);
-  color: #cbd5e1;
-}
-body.dark-mode .po-icon-btn:hover:not(:disabled) {
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(167, 139, 250, 0.5);
-}
-body.dark-mode .po-icon-pay:hover  { background: rgba(34, 197, 94, 0.15) !important; border-color: rgba(34, 197, 94, 0.5) !important; }
-body.dark-mode .po-icon-link:hover { background: rgba(124, 58, 237, 0.2) !important; border-color: rgba(167, 139, 250, 0.5) !important; }
-body.dark-mode .po-icon-delete:hover { background: rgba(239, 68, 68, 0.15) !important; border-color: rgba(239, 68, 68, 0.4) !important; }
-
-/* ============================================================
-   PILLS
-   ============================================================ */
 .po-pill {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  border: 1px solid transparent;
+  display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.03em; border: 1px solid transparent;
 }
-.po-pill-unpaid   { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
-.po-pill-partial  { background: #fef3c7; color: #b45309; border-color: #fde68a; }
-.po-pill-paid     { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-.po-pill-succeeded{ background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-.po-pill-pending  { background: #fef3c7; color: #b45309; border-color: #fde68a; }
-.po-pill-failed   { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+.po-pill-unpaid   { background: #fee2e2; color: #b91c1c; }
+.po-pill-partial  { background: #fef3c7; color: #b45309; }
+.po-pill-paid     { background: #dcfce7; color: #15803d; }
+.po-pill-succeeded{ background: #dcfce7; color: #15803d; }
+.po-pill-pending  { background: #fef3c7; color: #b45309; }
+.po-pill-failed   { background: #fee2e2; color: #b91c1c; }
 
-body.dark-mode .po-pill-unpaid,
-body.dark-mode .po-pill-failed {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.35);
-}
-body.dark-mode .po-pill-partial,
-body.dark-mode .po-pill-pending {
-  background: rgba(234, 179, 8, 0.18);
-  color: #fcd34d;
-  border-color: rgba(234, 179, 8, 0.35);
-}
-body.dark-mode .po-pill-paid,
-body.dark-mode .po-pill-succeeded {
-  background: rgba(34, 197, 94, 0.18);
-  color: #86efac;
-  border-color: rgba(34, 197, 94, 0.35);
-}
-
-/* Lifecycle pills */
-.po-pill-lifecycle-draft        { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
-.po-pill-lifecycle-ordered      { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
-.po-pill-lifecycle-acknowledged { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
-.po-pill-lifecycle-shipped      { background: #fef3c7; color: #b45309; border-color: #fde68a; }
-.po-pill-lifecycle-delivered    { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-.po-pill-lifecycle-grn_posted   { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-.po-pill-lifecycle-invoiced     { background: #ede9fe; color: #6d28d9; border-color: #ddd6fe; }
-.po-pill-lifecycle-matched      { background: #ede9fe; color: #6d28d9; border-color: #c4b5fd; }
-.po-pill-lifecycle-paid         { background: #dcfce7; color: #15803d; border-color: #86efac; }
-.po-pill-lifecycle-closed       { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
-.po-pill-lifecycle-cancelled    { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
-
-body.dark-mode .po-pill-lifecycle-draft,
-body.dark-mode .po-pill-lifecycle-closed {
-  background: rgba(148, 163, 184, 0.18);
-  color: #cbd5e1;
-  border-color: rgba(148, 163, 184, 0.35);
-}
-body.dark-mode .po-pill-lifecycle-ordered,
-body.dark-mode .po-pill-lifecycle-acknowledged {
-  background: rgba(96, 165, 250, 0.18);
-  color: #93c5fd;
-  border-color: rgba(96, 165, 250, 0.4);
-}
-body.dark-mode .po-pill-lifecycle-shipped {
-  background: rgba(234, 179, 8, 0.18);
-  color: #fcd34d;
-  border-color: rgba(234, 179, 8, 0.4);
-}
-body.dark-mode .po-pill-lifecycle-delivered,
-body.dark-mode .po-pill-lifecycle-grn_posted,
-body.dark-mode .po-pill-lifecycle-paid {
-  background: rgba(34, 197, 94, 0.18);
-  color: #86efac;
-  border-color: rgba(34, 197, 94, 0.4);
-}
-body.dark-mode .po-pill-lifecycle-invoiced,
-body.dark-mode .po-pill-lifecycle-matched {
-  background: rgba(139, 92, 246, 0.2);
-  color: #c4b5fd;
-  border-color: rgba(139, 92, 246, 0.45);
-}
-body.dark-mode .po-pill-lifecycle-cancelled {
-  background: rgba(107, 114, 128, 0.2);
-  color: #9ca3af;
-  border-color: rgba(107, 114, 128, 0.4);
-}
+.po-pill-lifecycle-draft        { background: #f1f5f9; color: #475569; }
+.po-pill-lifecycle-ordered      { background: #dbeafe; color: #1d4ed8; }
+.po-pill-lifecycle-acknowledged { background: #dbeafe; color: #1d4ed8; }
+.po-pill-lifecycle-shipped      { background: #fef3c7; color: #b45309; }
+.po-pill-lifecycle-delivered    { background: #dcfce7; color: #15803d; }
+.po-pill-lifecycle-grn_posted   { background: #dcfce7; color: #15803d; }
+.po-pill-lifecycle-invoiced     { background: #ede9fe; color: #6d28d9; }
+.po-pill-lifecycle-matched      { background: #ede9fe; color: #6d28d9; }
+.po-pill-lifecycle-paid         { background: #dcfce7; color: #15803d; }
+.po-pill-lifecycle-closed       { background: #f1f5f9; color: #475569; }
+.po-pill-lifecycle-cancelled    { background: #f3f4f6; color: #6b7280; }
 
 .po-overdue {
-  display: inline-block;
-  margin-left: 0.4rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 6px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  background: #fee2e2;
-  color: #b91c1c;
+  display: inline-block; margin-left: 0.4rem; padding: 0.15rem 0.4rem;
+  border-radius: 6px; font-size: 0.65rem; font-weight: 600;
+  background: #fee2e2; color: #b91c1c;
 }
-body.dark-mode .po-overdue {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
-}
-
 .muted { color: #64748b; }
 body.dark-mode .muted { color: #94a3b8; }
 .small { font-size: 0.78rem; }
 
-/* ============================================================
-   EMPTY / LOADING
-   ============================================================ */
 .po-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
-  text-align: center;
-  color: #64748b;
-  gap: 1rem;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 3rem 1rem; text-align: center;
+  color: #64748b; gap: 1rem;
 }
-.po-empty.error { color: #dc2626; }
-body.dark-mode .po-empty.error { color: #f87171; }
-
 .po-spinner {
-  width: 40px; height: 40px;
-  border: 4px solid #e2e8f0;
-  border-top-color: #6366f1;
-  border-radius: 50%;
+  width: 40px; height: 40px; border: 4px solid #e2e8f0;
+  border-top-color: #6366f1; border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
-body.dark-mode .po-spinner {
-  border-color: rgba(255, 255, 255, 0.1);
-  border-top-color: #8b5cf6;
-}
 
-/* ============================================================
-   DETAIL DRAWER
-   ============================================================ */
 .po-drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(4px);
-  z-index: 9000;
-  display: flex;
-  justify-content: flex-end;
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(4px); z-index: 9000;
+  display: flex; justify-content: flex-end;
   animation: fade 0.15s ease;
 }
-body.dark-mode .po-drawer-backdrop {
-  background: rgba(0, 0, 0, 0.55);
-}
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
-
 .po-drawer {
-  width: 100%;
-  max-width: 480px;
-  height: 100%;
-  background: #ffffff;
-  border-left: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  animation: slideIn 0.22s ease;
-  color: #1e293b;
-  box-shadow: -10px 0 30px -10px rgba(15, 23, 42, 0.15);
+  width: 100%; max-width: 480px; height: 100%; background: #ffffff;
+  border-left: 1px solid #e2e8f0; display: flex; flex-direction: column;
+  animation: slideIn 0.22s ease; color: #1e293b;
 }
-
 body.dark-mode .po-drawer {
   background: rgba(20, 16, 46, 0.95);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  border-left-color: rgba(167, 139, 250, 0.22);
-  color: #e2e8f0;
-  box-shadow: -10px 0 40px -10px rgba(0, 0, 0, 0.6), 0 0 60px rgba(124, 58, 237, 0.2);
+  border-left-color: rgba(167, 139, 250, 0.22); color: #e2e8f0;
 }
-
 @keyframes slideIn { from { transform: translateX(20px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
-
 .po-drawer-head {
-  padding: 1.1rem 1.25rem;
-  border-bottom: 1px solid #f1f5f9;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  padding: 1.1rem 1.25rem; border-bottom: 1px solid #f1f5f9;
+  display: flex; justify-content: space-between; align-items: flex-start;
 }
 body.dark-mode .po-drawer-head { border-bottom-color: rgba(255, 255, 255, 0.06); }
-
 .po-drawer-head h2 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #0f172a;
+  margin: 0; font-size: 1rem; font-weight: 600; color: #0f172a;
 }
 body.dark-mode .po-drawer-head h2 { color: #f1f5f9; }
-.po-drawer-head .muted { font-size: 0.8rem; margin: 0.25rem 0 0; }
-
 .po-drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  flex: 1; overflow-y: auto; padding: 1.25rem;
+  display: flex; flex-direction: column; gap: 1.5rem;
 }
 .po-drawer-section h3 {
-  margin: 0 0 0.6rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
+  margin: 0 0 0.6rem; font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: #64748b;
 }
 body.dark-mode .po-drawer-section h3 { color: #94a3b8; }
-
 .po-drawer-amounts {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  margin-bottom: 0.9rem;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem; margin-bottom: 0.9rem;
 }
 .po-drawer-amounts > div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.7rem;
-  border-radius: 10px;
-  background: #f8fafc;
+  display: flex; flex-direction: column; gap: 0.2rem;
+  padding: 0.7rem; border-radius: 10px; background: #f8fafc;
   border: 1px solid #f1f5f9;
 }
 body.dark-mode .po-drawer-amounts > div {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.06);
 }
-
-.po-drawer-amounts .muted { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.po-drawer-amounts .muted { font-size: 0.7rem; text-transform: uppercase; }
 .po-drawer-amounts strong { font-size: 1.05rem; color: #0f172a; }
 body.dark-mode .po-drawer-amounts strong { color: #f1f5f9; }
 .po-drawer-amounts .danger { color: #dc2626; }
-body.dark-mode .po-drawer-amounts .danger { color: #f87171; }
-
-.po-drawer-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
-}
-
-.po-drawer-cta {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
+.po-drawer-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.9rem; }
+.po-drawer-cta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .po-drawer-blocked {
-  padding: 0.7rem 1rem;
-  border-radius: 10px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
-  font-size: 0.82rem;
+  padding: 0.7rem 1rem; border-radius: 10px; background: #fef2f2;
+  border: 1px solid #fecaca; color: #b91c1c; font-size: 0.82rem;
 }
 body.dark-mode .po-drawer-blocked {
   background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;
 }
-
 .po-meta {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.4rem 1rem;
-  font-size: 0.82rem;
-  margin: 0;
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 0.4rem 1rem; font-size: 0.82rem; margin: 0;
 }
 .po-meta dt { color: #64748b; font-weight: 500; }
 body.dark-mode .po-meta dt { color: #94a3b8; }
 .po-meta dd { margin: 0; color: #1e293b; }
 body.dark-mode .po-meta dd { color: #e2e8f0; }
-
-.po-notes {
-  white-space: pre-wrap;
-  font-style: italic;
-  color: #475569 !important;
-}
-body.dark-mode .po-notes { color: #cbd5e1 !important; }
-
 .po-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0.6rem;
 }
 .po-list li {
-  padding: 0.7rem 0.9rem;
-  border-radius: 10px;
-  background: #f8fafc;
+  padding: 0.7rem 0.9rem; border-radius: 10px; background: #f8fafc;
   border: 1px solid #f1f5f9;
 }
 body.dark-mode .po-list li {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.06);
 }
-
 .po-list-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-  gap: 0.5rem;
+  display: flex; justify-content: space-between;
+  align-items: center; font-size: 0.85rem; gap: 0.5rem;
 }
 .po-list-amount { font-weight: 600; color: #6366f1; }
-body.dark-mode .po-list-amount { color: #a5b4fc; }
 
-.po-list-meta {
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
+/* Create modal */
+.po-create-modal {
+  width: 100%; max-width: 560px; max-height: 90vh;
+  background: #ffffff; border-radius: 16px;
+  display: flex; flex-direction: column; overflow: hidden;
+  animation: slideIn 0.22s ease;
+}
+body.dark-mode .po-create-modal {
+  background: rgba(20, 16, 46, 0.98);
+  border: 1px solid rgba(167, 139, 250, 0.22);
+}
+.po-form-group { margin-bottom: 1rem; }
+.po-form-group label {
+  display: block; font-size: 0.8rem; font-weight: 600;
+  color: #475569; margin-bottom: 0.35rem;
+}
+body.dark-mode .po-form-group label { color: #cbd5e1; }
+.po-form-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+}
+.po-input {
+  width: 100%; padding: 0.55rem 0.75rem; border-radius: 10px;
+  border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a;
+  font-size: 0.85rem; font-family: inherit; outline: none;
+}
+body.dark-mode .po-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(167, 139, 250, 0.2); color: #e2e8f0;
+}
+.po-total-preview {
+  padding: 0.7rem 1rem; border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff; font-size: 1.2rem; font-weight: 700; text-align: right;
 }
 </style>
