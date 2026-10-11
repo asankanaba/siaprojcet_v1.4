@@ -100,7 +100,7 @@
             <h4>Payment Not Confirmed</h4>
             <p class="qr-hint">
               The customer didn't complete payment within the time limit.
-              You can retry, or mark the sale as paid manually with a reference number.
+              You can retry, mark as paid manually, or cancel the sale.
             </p>
           </div>
 
@@ -110,7 +110,7 @@
               <i class="fas fa-ban"></i>
             </div>
             <h4>Cancelled</h4>
-            <p class="qr-hint">This payment was cancelled.</p>
+            <p class="qr-hint">This sale has been voided.</p>
           </div>
 
         </div>
@@ -121,7 +121,7 @@
           <span>Checking every 2s… <strong>{{ secondsLeft }}s</strong> remaining</span>
         </div>
 
-        <!-- Manual reference input (visible during timeout OR while awaiting) -->
+        <!-- Manual reference input -->
         <div v-if="showManualEntry" class="qr-manual">
           <label>Reference Number</label>
           <input
@@ -151,7 +151,7 @@
           @click="toggleManual"
         >
           <i class="fas fa-edit"></i>
-          {{ showManualEntry ? 'Hide Manual Entry' : 'Enter Reference Manually' }}
+          {{ showManualEntry ? 'Hide Manual Entry' : 'Enter Reference' }}
         </button>
         <button
           v-if="status === 'timeout'"
@@ -164,11 +164,12 @@
           Retry Payment
         </button>
         <button
-          v-if="canCancel"
-          class="qr-btn qr-btn-ghost"
-          @click="cancel"
+          v-if="canCancel || status === 'timeout' || status === 'failed'"
+          class="qr-btn qr-btn-danger"
+          @click="cancelSale"
         >
-          Cancel Sale
+          <i class="fas fa-times"></i>
+          {{ status === 'awaiting' ? 'Cancel Sale' : 'Cancel — Customer Left' }}
         </button>
         <button
           v-if="status === 'paid'"
@@ -194,7 +195,7 @@ const props = defineProps({
   saleId:   { type: Number,  default: null },
   invoice:  { type: String,  default: '' },
   amount:   { type: Number,  default: 0 },
-  method:   { type: String,  default: 'gcash' }, // gcash | maya | qrph
+  method:   { type: String,  default: 'gcash' },
   timeoutSeconds: { type: Number, default: 90 },
   pollIntervalMs: { type: Number, default: 2000 }
 })
@@ -202,7 +203,7 @@ const props = defineProps({
 const emit = defineEmits(['paid', 'cancelled', 'failed'])
 
 // ============ STATE ============
-const status        = ref('creating') // creating|awaiting|paid|failed|timeout|cancelled
+const status        = ref('creating')
 const intentId      = ref(null)
 const qrImage       = ref(null)
 const redirectUrl   = ref(null)
@@ -237,7 +238,7 @@ const title = computed(() => {
   if (status.value === 'paid')     return 'Payment Successful'
   if (status.value === 'failed')   return 'Payment Failed'
   if (status.value === 'timeout')  return 'Payment Timed Out'
-  if (status.value === 'cancelled')return 'Payment Cancelled'
+  if (status.value === 'cancelled')return 'Sale Cancelled'
   if (status.value === 'creating') return 'Preparing Payment'
   return `Scan to Pay via ${methodLabel.value}`
 })
@@ -247,6 +248,7 @@ const subtitle = computed(() => {
   if (status.value === 'paid')     return 'Thank you — printing receipt'
   if (status.value === 'timeout')  return 'No payment detected'
   if (status.value === 'failed')   return errorMessage.value || 'Something went wrong'
+  if (status.value === 'cancelled')return 'Sale has been voided'
   return ''
 })
 
@@ -301,7 +303,6 @@ async function startFlow() {
 
     intentId.value = data.intent_id || null
 
-    // Extract QR / redirect from next_action
     const na = data.next_action || {}
     const code = na.code || {}
     if (code.image_url) {
@@ -309,7 +310,6 @@ async function startFlow() {
     } else if (na.redirect && na.redirect.url) {
       redirectUrl.value = na.redirect.url
     } else if (code.url) {
-      // PayMongo sometimes returns the raw QR string under `code.url`
       redirectUrl.value = code.url
     }
 
@@ -327,7 +327,6 @@ async function startFlow() {
 function startPolling() {
   stopPolling()
   pollTimer = setInterval(pollStatus, props.pollIntervalMs)
-  // run one immediately
   pollStatus()
 }
 
@@ -439,6 +438,35 @@ function cancel() {
   stopTimers()
   status.value = 'cancelled'
   emit('cancelled', { sale_id: props.saleId })
+}
+
+async function cancelSale() {
+  const result = await Swal.fire({
+    title: 'Cancel this sale?',
+    text: 'The pending sale will be voided and the QR will be invalidated. You can start a new sale afterwards.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#EF4444',
+    cancelButtonColor: '#6B7280',
+    confirmButtonText: 'Yes, Cancel Sale',
+    cancelButtonText: 'Keep Waiting'
+  })
+
+  if (!result.isConfirmed) return
+
+  stopTimers()
+
+  try {
+    await api.post('/payments.php', {
+      kind: 'pos_void',
+      sale_id: props.saleId
+    })
+  } catch (err) {
+    console.warn('Could not void sale on backend:', err)
+  }
+
+  status.value = 'cancelled'
+  emit('cancelled', { sale_id: props.saleId, voided: true })
 }
 
 function finish() {
@@ -785,12 +813,27 @@ function handleBackdropClick() {
 }
 .qr-btn-primary:hover:not(:disabled) { background: #4338CA; }
 .qr-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .qr-btn-ghost {
   background: transparent;
   color: inherit;
   border: 1px solid rgba(148,163,184,0.35);
 }
 .qr-btn-ghost:hover { background: rgba(148,163,184,0.12); }
+
+.qr-btn-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+.qr-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #EF4444;
+}
+.qr-modal.dark .qr-btn-danger {
+  color: #F87171;
+  border-color: rgba(248, 113, 113, 0.4);
+}
 
 @media (max-width: 480px) {
   .qr-code { width: 180px; height: 180px; }
