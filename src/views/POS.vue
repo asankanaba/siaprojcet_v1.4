@@ -170,7 +170,7 @@
           </div>
         </div>
 
-        <!-- ✅ POS QR Modal -->
+        <!-- POS QR Modal -->
         <PayMongoQRModal
           :visible="showQRModal"
           :sale-id="qrSaleId"
@@ -285,7 +285,7 @@ const saleData = ref(null)
 const showReceiptModal = ref(false)
 const isProcessing = ref(false)
 
-// ✅ POS QR state
+// POS QR state
 const showQRModal = ref(false)
 const qrSaleId = ref(null)
 const qrInvoice = ref('')
@@ -734,49 +734,41 @@ const onQRPaid = async (info) => {
   showReceiptModal.value = true
 }
 
-const onQRCancelled = async () => {
+// ✅ Non-blocking cancel — closes instantly, tiny toast, back to POS
+const onQRCancelled = () => {
   showQRModal.value = false
   isProcessing.value = false
   pendingCartSnapshot.value = null
 
-  const darkMode = isDarkMode()
-  const modalBg = darkMode ? '#1e293b' : '#ffffff'
-  const modalText = darkMode ? '#e2e8f0' : '#000000'
-  const popupClass = darkMode ? 'swal-popup-dark' : 'swal-popup-soft'
-
-  await Swal.fire({
+  const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 2000,
+    timerProgressBar: true
+  })
+  Toast.fire({
     icon: 'info',
-    title: 'Payment Cancelled',
-    text: 'The sale has been voided. You can start a new sale.',
-    confirmButtonColor: '#4F46E5',
-    background: modalBg,
-    color: modalText,
-    customClass: {
-      popup: popupClass
-    }
+    title: 'Sale cancelled'
   })
 }
 
-const onQRFailed = async (info) => {
+// ✅ Non-blocking failed — same idea
+const onQRFailed = (info) => {
   showQRModal.value = false
   isProcessing.value = false
   pendingCartSnapshot.value = null
 
-  const darkMode = isDarkMode()
-  const modalBg = darkMode ? '#1e293b' : '#ffffff'
-  const modalText = darkMode ? '#e2e8f0' : '#000000'
-  const popupClass = darkMode ? 'swal-popup-dark' : 'swal-popup-soft'
-
-  await Swal.fire({
+  const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true
+  })
+  Toast.fire({
     icon: 'error',
-    title: 'Payment Failed',
-    text: info?.message || 'The payment was not completed.',
-    confirmButtonColor: '#4F46E5',
-    background: modalBg,
-    color: modalText,
-    customClass: {
-      popup: popupClass
-    }
+    title: info?.message || 'Payment failed'
   })
 }
 
