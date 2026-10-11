@@ -188,7 +188,7 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
 import api from '@/api/index.js'
-import Swal from 'sweetalert2'
+// ✅ Swal no longer needed — cancel uses fire-and-forget
 
 const props = defineProps({
   visible:  { type: Boolean, default: false },
@@ -354,9 +354,14 @@ async function pollStatus() {
       status.value = 'failed'
       errorMessage.value = 'Payment was not completed.'
       stopTimers()
+    } else if (data.payment_status === 'cancelled') {
+      // Someone voided it externally — close the modal
+      status.value = 'cancelled'
+      stopTimers()
+      emit('cancelled', { sale_id: props.saleId, voided: true })
     }
   } catch (err) {
-    // silent — polling errors shouldn't kill the flow
+    // silent
   }
 }
 
@@ -405,20 +410,12 @@ async function submitManualPaid() {
         manual: true
       }), 800)
     } else {
-      Swal.fire({
-        icon: 'error',
-        title: 'Could not save',
-        text: data.message || 'Unknown error',
-        confirmButtonColor: '#4F46E5'
-      })
+      errorMessage.value = data.message || 'Could not save'
+      // show a toast via parent will handle, but keep it simple
+      alert(data.message || 'Could not save')
     }
   } catch (err) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Network error',
-      text: err.message,
-      confirmButtonColor: '#4F46E5'
-    })
+    alert(err.message || 'Network error')
   } finally {
     isSubmittingManual.value = false
   }
@@ -435,35 +432,24 @@ async function retry() {
 }
 
 function cancel() {
+  // Simple X-close during awaiting/creating — no confirmation, just fire void
   stopTimers()
+  api.post('/payments.php', { kind: 'pos_void', sale_id: props.saleId }).catch(() => {})
   status.value = 'cancelled'
-  emit('cancelled', { sale_id: props.saleId })
+  emit('cancelled', { sale_id: props.saleId, voided: true })
 }
 
-async function cancelSale() {
-  const result = await Swal.fire({
-    title: 'Cancel this sale?',
-    text: 'The pending sale will be voided and the QR will be invalidated. You can start a new sale afterwards.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#EF4444',
-    cancelButtonColor: '#6B7280',
-    confirmButtonText: 'Yes, Cancel Sale',
-    cancelButtonText: 'Keep Waiting'
-  })
-
-  if (!result.isConfirmed) return
-
+// ✅ SIMPLE non-blocking cancel — no Swal, fires void in background
+function cancelSale() {
   stopTimers()
 
-  try {
-    await api.post('/payments.php', {
-      kind: 'pos_void',
-      sale_id: props.saleId
-    })
-  } catch (err) {
+  // Fire the void in the background — don't block UI
+  api.post('/payments.php', {
+    kind: 'pos_void',
+    sale_id: props.saleId
+  }).catch(err => {
     console.warn('Could not void sale on backend:', err)
-  }
+  })
 
   status.value = 'cancelled'
   emit('cancelled', { sale_id: props.saleId, voided: true })
@@ -478,7 +464,7 @@ function finish() {
 }
 
 function handleBackdropClick() {
-  // Do NOT close on backdrop — cashier must explicitly cancel or finish
+  // Do NOT close on backdrop
 }
 </script>
 
