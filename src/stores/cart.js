@@ -6,8 +6,13 @@ export const useCartStore = defineStore('cart', {
     customer_id: null,
     discount: 0,
     tax_rate: 0.12,
-    tax_type: 'inclusive', // inclusive or exclusive
-    currency: '₱'
+    tax_type: 'inclusive',
+    currency: '₱',
+
+    // ✅ POS QR flow state
+    pendingSaleId: null,
+    pendingInvoice: null,
+    pendingMethod: null
   }),
 
   getters: {
@@ -17,27 +22,19 @@ export const useCartStore = defineStore('cart', {
 
     tax: (state) => {
       const subtotal = state.subtotal
-
-      // 🟢 FORCE INCLUSIVE LOGIC (Even if Local Storage is corrupted)
       if (state.tax_type === 'inclusive' || localStorage.getItem('tax_type') === 'Inclusive') {
         const taxAmount = subtotal - (subtotal / (1 + state.tax_rate))
         return taxAmount
       }
-
-      // 🔴 Exclusive logic (Fallback)
       return subtotal * state.tax_rate
     },
 
     total: (state) => {
       const subtotal = state.subtotal
       const discount = state.discount
-
-      // 🟢 FORCE INCLUSIVE TOTAL (The price stays fixed)
       if (state.tax_type === 'inclusive' || localStorage.getItem('tax_type') === 'Inclusive') {
         return subtotal - discount
       }
-
-      // 🔴 Exclusive total (Adds tax on top)
       return subtotal + (subtotal * state.tax_rate) - discount
     },
 
@@ -64,7 +61,6 @@ export const useCartStore = defineStore('cart', {
       const savedRate = localStorage.getItem('tax_rate')
       const savedType = localStorage.getItem('tax_type')
 
-      // Set the tax rate
       if (savedRate) {
         this.tax_rate = parseFloat(savedRate) / 100
       } else {
@@ -72,7 +68,6 @@ export const useCartStore = defineStore('cart', {
         localStorage.setItem('tax_rate', '12')
       }
 
-      // Set the tax type - Force lowercase to prevent the 'Inclusive' bug
       if (savedType) {
         this.tax_type = savedType.toLowerCase()
       } else {
@@ -91,7 +86,6 @@ export const useCartStore = defineStore('cart', {
         }
         existing.quantity += quantity
 
-        // ✅ Backfill image in case the item was added before the fix
         if (!existing.image_url) {
           existing.image_url = product.image_url || product.image || null
         }
@@ -110,7 +104,6 @@ export const useCartStore = defineStore('cart', {
           quantity: quantity,
           max_stock: product.stock,
           stock: product.stock,
-          // ✅ REQUIRED so cart thumbnails render the real product photo
           image_url: product.image_url || product.image || null,
           image:     product.image    || product.image_url || null
         })
@@ -140,6 +133,22 @@ export const useCartStore = defineStore('cart', {
       this.items = []
       this.customer_id = null
       this.discount = 0
+      this.pendingSaleId = null
+      this.pendingInvoice = null
+      this.pendingMethod = null
+    },
+
+    // ✅ POS QR flow helpers
+    setPendingSale(saleId, invoice, method) {
+      this.pendingSaleId = saleId
+      this.pendingInvoice = invoice
+      this.pendingMethod = method
+    },
+
+    clearPendingSale() {
+      this.pendingSaleId = null
+      this.pendingInvoice = null
+      this.pendingMethod = null
     },
 
     updateTaxRate(rate) {
@@ -148,7 +157,6 @@ export const useCartStore = defineStore('cart', {
     },
 
     updateTaxType(type) {
-      // Force lowercase when saving
       this.tax_type = type.toLowerCase()
       localStorage.setItem('tax_type', type.toLowerCase())
     }

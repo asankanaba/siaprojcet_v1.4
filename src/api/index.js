@@ -4,8 +4,7 @@ import axios from 'axios'
 // ============================================
 // API BASE URL
 // ============================================
-// Reads from Vite env vars (set in .env.production / Netlify)
-// Falls back to the Vercel backend URL if not set
+// Note: host is "siaprojcet" (no 't' before 'v14')
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   'https://siaprojcetv14backend.vercel.app/api'

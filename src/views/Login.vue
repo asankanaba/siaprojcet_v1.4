@@ -104,6 +104,8 @@ const handleLogin = async () => {
         redirectPath = '/pos';
       } else if (role === 'admin') {
         redirectPath = '/dashboard';
+      } else if (role === 'supplier') {
+        redirectPath = '/supplier/dashboard';
       }
 
       console.log('🔄 Redirecting to:', redirectPath);
