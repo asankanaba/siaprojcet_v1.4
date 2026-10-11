@@ -182,7 +182,7 @@
           @failed="onQRFailed"
         />
 
-        <!-- Receipt Modal (existing) -->
+        <!-- Receipt Modal -->
         <div v-if="showReceiptModal" class="modal-overlay" @click.self="closeReceiptModal">
           <div class="modal-content receipt-modal">
             <div class="modal-header">
@@ -292,7 +292,6 @@ const qrInvoice = ref('')
 const qrAmount = ref(0)
 const qrMethod = ref('gcash')
 
-// Pending payload for after QR is paid
 const pendingCartSnapshot = ref(null)
 
 // ============ COMPUTED ============
@@ -337,6 +336,13 @@ watch(paymentMethod, (newMethod) => {
     amountPaid.value = ''
   }
 })
+
+// ============ DARK MODE HELPER ============
+const isDarkMode = () => {
+  return document.documentElement.classList.contains('dark-mode') ||
+         document.body.classList.contains('dark-mode') ||
+         document.documentElement.getAttribute('data-theme') === 'dark'
+}
 
 // ============ IMAGE HELPER ============
 const getProductImage = (product) => {
@@ -484,7 +490,7 @@ const processPayment = async () => {
   if (isProcessing.value) return
   isProcessing.value = true
 
-  const darkMode = document.documentElement.classList.contains('dark-mode') || document.body.classList.contains('dark-mode')
+  const darkMode = isDarkMode()
   const modalBg = darkMode ? '#1e293b' : '#ffffff'
   const modalText = darkMode ? '#e2e8f0' : '#000000'
   const popupClass = darkMode ? 'swal-popup-dark' : 'swal-popup-soft'
@@ -533,7 +539,6 @@ const processPayment = async () => {
     return
   }
 
-  // Take a snapshot of the cart BEFORE clearing, because the QR flow needs it after payment
   pendingCartSnapshot.value = {
     items: cartStore.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price, total: i.price * i.quantity })),
     subtotal: cartStore.subtotal,
@@ -547,7 +552,6 @@ const processPayment = async () => {
   }
 
   if (isQrMethod) {
-    // 1) Create the sale in pending state
     try {
       const invoiceNumber = 'INV-' + Date.now().toString().slice(-8)
       const orderData = {
@@ -568,7 +572,7 @@ const processPayment = async () => {
         payment_amount: cartStore.total,
         change_amount: 0,
         status: 'completed',
-        payment_status: 'pending' // sale exists, waiting for QR
+        payment_status: 'pending'
       }
 
       const saleRes = await api.post('/sales.php', orderData)
@@ -576,17 +580,14 @@ const processPayment = async () => {
         throw new Error(saleRes.data?.message || 'Failed to create sale')
       }
 
-      // 2) Open QR modal
       qrSaleId.value = saleRes.data.sale_id
       qrInvoice.value = invoiceNumber
       qrAmount.value = cartStore.total
       qrMethod.value = paymentMethod.value
       showQRModal.value = true
 
-      // Refresh product list immediately so stock reflects the pending sale
       await refreshProducts()
 
-      // Clear the cart UI — the QR modal owns the flow now
       cartStore.clearCart()
       amountPaid.value = ''
 
@@ -605,7 +606,7 @@ const processPayment = async () => {
     return
   }
 
-  // ============ CASH / CARD (existing instant flow) ============
+  // ============ CASH / CARD (instant flow) ============
   try {
     const paid = parseFloat(amountPaid.value) || cartStore.total
     const invoiceNumber = 'INV-' + Date.now().toString().slice(-8)
@@ -738,14 +739,21 @@ const onQRCancelled = async () => {
   isProcessing.value = false
   pendingCartSnapshot.value = null
 
-  // Sale row was created in pending state — leave it (status pending).
-  // Restore the cart so the cashier can retry or switch methods.
-  // (Optional: you could DELETE the sale row here. Leaving it pending is safer.)
+  const darkMode = isDarkMode()
+  const modalBg = darkMode ? '#1e293b' : '#ffffff'
+  const modalText = darkMode ? '#e2e8f0' : '#000000'
+  const popupClass = darkMode ? 'swal-popup-dark' : 'swal-popup-soft'
+
   await Swal.fire({
     icon: 'info',
     title: 'Payment Cancelled',
-    text: 'The sale is recorded as pending. You can retry from the Sales screen.',
-    confirmButtonColor: '#4F46E5'
+    text: 'The sale has been voided. You can start a new sale.',
+    confirmButtonColor: '#4F46E5',
+    background: modalBg,
+    color: modalText,
+    customClass: {
+      popup: popupClass
+    }
   })
 }
 
@@ -753,11 +761,22 @@ const onQRFailed = async (info) => {
   showQRModal.value = false
   isProcessing.value = false
   pendingCartSnapshot.value = null
+
+  const darkMode = isDarkMode()
+  const modalBg = darkMode ? '#1e293b' : '#ffffff'
+  const modalText = darkMode ? '#e2e8f0' : '#000000'
+  const popupClass = darkMode ? 'swal-popup-dark' : 'swal-popup-soft'
+
   await Swal.fire({
     icon: 'error',
     title: 'Payment Failed',
     text: info?.message || 'The payment was not completed.',
-    confirmButtonColor: '#4F46E5'
+    confirmButtonColor: '#4F46E5',
+    background: modalBg,
+    color: modalText,
+    customClass: {
+      popup: popupClass
+    }
   })
 }
 
@@ -814,7 +833,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Keep your existing styles — nothing here changed except the QR modal styles are in the component */
 .app-layout { display: flex; min-height: 100vh; }
 .main-content { flex: 1; display: flex; flex-direction: column; }
 .page-content { padding: 0; background: #f1f5f9; flex: 1; }
