@@ -167,7 +167,7 @@ const menuConfig = {
       { module: 'products',  label: 'Products',         path: '/products',  icon: 'fas fa-boxes' },
       { module: 'sales',     label: 'Sales',            path: '/sales',     icon: 'fas fa-dollar-sign' },
       { module: 'customers', label: 'Customers',        path: '/customers', icon: 'fas fa-users' },
-      { module: 'staff',     label: 'Staff Management', path: '/staff',     icon: 'fas fa-user-cog' },
+      // ✅ Staff Management removed — HR section handles this now
       { module: 'pos',       label: 'Point of Sale',    path: '/pos',       icon: 'fas fa-shopping-cart' }
     ]
   },
